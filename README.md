@@ -30,7 +30,7 @@ Do all these things without a soft processor.
 
   ## Hardware
 
-  **Terasic DE2-115**
+  **[Terasic DE2-115](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=139&No=502&PartNo=4)**
 
   This board has two 10/100/1000 copper Ethernet ports connected by a 
   [Marvel 88E1111 PHY](https://www.marvell.com/content/dam/marvell/en/public-collateral/transceivers/marvell-phys-transceivers-alaska-88e1111-datasheet.pdf),

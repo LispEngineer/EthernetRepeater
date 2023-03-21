@@ -6,7 +6,7 @@ set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name DEVICE EP4CE115F29C7
 set_global_assignment -name TOP_LEVEL_ENTITY "EthernetRepeater"
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "14.0"
-set_global_assignment -name LAST_QUARTUS_VERSION "14.0"
+set_global_assignment -name LAST_QUARTUS_VERSION "21.1.0 Lite Edition"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:29:37 MARCH 20,2023"
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 780
@@ -1099,3 +1099,8 @@ set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DDCSCL
 # End of pin assignments by Terasic System Builder
 #============================================================
 
+
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
