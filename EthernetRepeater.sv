@@ -200,12 +200,135 @@ module EthernetRepeater(
   output logic        DVI_TX_VS
 );
 
+// Zero out unused outputs
+always_comb begin
+  LEDG[8:4] = 'b0;
+  LEDR = 'b0;
+  HEX0 = 'b0;
+  HEX1 = 'b0;
+  HEX2 = 'b0;
+  HEX3 = 'b0;
+  HEX4 = 'b0;
+  HEX5 = 'b0;
+  HEX6 = 'b0;
+  HEX7 = 'b0;
+  DVI_TX_CTL = 'b0;
+  DVI_TX_D = 'b0;
+  DVI_TX_CLK = 'b0;
+  DVI_TX_DE = 'b0;
+  DVI_TX_DKEN = 'b0;
+  DVI_TX_HS = 'b0;
+  DVI_TX_HTPLG = 'b0;
+  DVI_TX_ISEL = 'b0;
+  DVI_TX_MSEN = 'b0;
+  DVI_TX_PD_N = 'b0;
+  DVI_TX_SCL = 'b0;
+  DVI_TX_VS = 'b0;
+  DVI_EDID_WP = 'b0;
+  LCD_BLON = 'b0;
+  LCD_EN = 'b0;
+  LCD_RS = 'b0;
+  LCD_RW = 'b0;
+  LCD_ON = 'b0;
+  UART_RTS = 'b0;
+  UART_TXD = 'b0;
+  SD_CLK = 'b0;
+  VGA_R = 'b0;
+  VGA_G = 'b0;
+  VGA_B = 'b0;
+  VGA_BLANK_N = 'b0;
+  VGA_CLK = 'b0;
+  VGA_HS = 'b0;
+  VGA_SYNC_N = 'b0;
+  VGA_VS = 'b0;
+  AUD_DACDAT = 'b0;
+  AUD_XCK = 'b0;
+  EEP_I2C_SCLK = 'b0;
+  I2C_SCLK = 'b0;
+  ENET0_GTX_CLK = 'b0;
+  ENET0_MDC = 'b0;
+  ENET0_RST_N = 'b0;
+  ENET0_TX_EN = 'b0;
+  ENET0_TX_ER = 'b0;
+  ENET0_TX_DATA = 'b0;
+  ENET1_TX_DATA = 'b0;
+  ENET1_GTX_CLK = 'b0;
+  ENET1_MDC = 'b0;
+  ENET1_RST_N = 'b0;
+  ENET1_TX_EN = 'b0;
+  ENET1_TX_ER = 'b0;
+  OTG_ADDR = 'b0;
+  OTG_CS_N = 'b0;
+  OTG_RD_N = 'b0;
+  OTG_RST_N = 'b0;
+  OTG_WE_N = 'b0;
+  DRAM_ADDR = 'b0;
+  DRAM_BA = 'b0;
+  DRAM_DQM = 'b0;
+  DRAM_CAS_N = 'b0;
+  DRAM_CKE = 'b0;
+  DRAM_CLK = 'b0;
+  DRAM_CS_N = 'b0;
+  DRAM_RAS_N = 'b0;
+  DRAM_WE_N = 'b0;
+  SRAM_ADDR = 'b0;
+  SRAM_CE_N = 'b0;
+  SRAM_LB_N = 'b0;
+  SRAM_OE_N = 'b0;
+  SRAM_UB_N = 'b0;
+  SRAM_WE_N = 'b0;
+  FL_ADDR = 'b0;
+  FL_CE_N = 'b0;
+  FL_OE_N = 'b0;
+  FL_RST_N = 'b0;
+  FL_WE_N = 'b0;
+  FL_WP_N = 'b0;
+end
+
+// Tristate unused inouts
+always_comb begin
+  EX_IO = 'z;
+  LCD_DATA = 'z;
+  PS2_CLK = 'z;
+  PS2_CLK2 = 'z;
+  PS2_DAT = 'z;
+  PS2_DAT2 = 'z;
+  SD_CMD = 'z;
+  SD_DAT = 'z;
+  AUD_ADCLRCK = 'z;
+  AUD_BCLK = 'z;
+  AUD_DACLRCK = 'z;
+  EEP_I2C_SDAT = 'z;
+  I2C_SDAT = 'z;
+  ENET0_MDIO = 'z;
+  ENET1_MDIO = 'z;
+  OTG_DATA = 'z;
+  DRAM_DQ = 'z;
+  SRAM_DQ = 'z;
+  FL_DQ = 'z;
+  GPIO = 'z;
+  DVI_RX_DDCSCL = 'z;
+  DVI_RX_DDCSDA = 'z;
+  DVI_TX_DDCSCL = 'z;
+  DVI_TX_DDCSDA = 'z;
+  DVI_TX_SDA = 'z;
+end
+
 logic [31:0] counter = 0;
 
-always @(posedge CLOCK_50) begin
+always_ff @(posedge CLOCK_50) begin
   counter <= counter + 1;
 end
 
 assign LEDG[3:0] = counter[28:25];
 
 endmodule
+
+
+`ifdef IS_QUARTUS // Defined in Assignments -> Settings -> ... -> Verilog HDL Input
+// Restore the default_nettype to prevent side effects
+// See: https://front-end-verification.blogspot.com/2010/10/implicit-net-declartions-in-verilog-and.html
+// and: https://sutherland-hdl.com/papers/2006-SNUG-Boston_standard_gotchas_presentation.pdf
+`default_nettype wire // turn implicit nets on again to avoid side-effects
+`endif
+// `default_nettype none // This causes problems in Questa
