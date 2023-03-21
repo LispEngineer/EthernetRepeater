@@ -31,6 +31,10 @@
  * No idea.
  *
  * What should we do while idling? Turn off the MDC? Leave MDIO at low?
+ * Per 22.2.4.5.1 it seems we should put MDIO at z.
+ *
+ * When reading from the PHY, when should we read? Spec 22.3.4 is unclear
+ * to me. When writing to the PHY, it samples at the rising edge of MDC.
  *
  * Caller: Assert activate while !busy until the busy signal activates.
  * If activate is asserted while busy, wait until it goes !busy then busy.
@@ -74,18 +78,16 @@ module mii_management_interface #(
 
 // FIXME: Ensure that CLK_DIV is at least 2
 
-// Our main states in our I2C state machine
+// Our main states in our Management Interface state machine
 localparam S_RESET    = 4'd0,
            S_IDLE     = 4'd1, // MDIO = z (pulled high by external pull-up)
-           S_PREAMBLE = 4'd2, // 32 1 bits
-           S_SOF      = 4'd3, // Start of frame (01)
+           S_PREAMBLE = 4'd2, // 32x1 bits
+           S_SOF      = 4'd3, // Start of frame: 01
            S_OPCODE   = 4'd4, // Read 10, Write 01
-           S_PHYADDR  = 4'd5, // 5 bits
-           S_REGADDR  = 4'd6, // 5 bits
+           S_PHYADDR  = 4'd5, // 5 bits (MSB first)
+           S_REGADDR  = 4'd6, // 5 bits (MSB first)
            S_TA       = 4'd7, // Turnaround: Read = Z0 (by PHY), Write = 10 (by STA)
-           S_DATA     = 4'd8; // and back to IDLE
-
-
+           S_DATA     = 4'd8; // 16 bits, MSB First, then back to IDLE
 
 // Clock divider counter
 localparam CLK_DIV_CNT_ONE = { {(CLK_CNT_SZ-1){1'b0}}, 1'b1 }; // 1 in the proper bit width
@@ -95,9 +97,9 @@ logic [CLK_CNT_SZ:0] clk_div_cnt;
 // Our state machine       
 logic [3:0] state = S_RESET;
 
-// Our steps to make the MDC
-// 0 1 2 3
-// _/---\_
+// Our steps to make the MDC (management interface clock)
+// 0 1 2 3 0 1
+// _/‾‾‾\___/‾
 // 0: clock starts low
 // 1: clock transitions high
 // 2: clock remains high
@@ -155,7 +157,7 @@ always_ff @(posedge clk) begin
 
       S_IDLE: begin ///////////////////////////////////////////////////
 
-        mdio_e <= 0;
+        mdio_e <= 0; // z during idle per 22.2.4.5.1
 
         // Do we run our clock with no output? Sounds good to me.
         case (step)
