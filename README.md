@@ -44,3 +44,7 @@ Do all these things without a soft processor.
   * Expansion: GPIO, EX_IO, HSMC, SMA
 
   ...and some not very useful stuff like a TV Decoder.
+
+  ## Software
+
+  Quartus Lite 21.1.0 Build 842
