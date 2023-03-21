@@ -11,13 +11,30 @@
 `timescale 1 ns / 100 ps
 
 /*
-  MII management interface per 802.3-2022 Spec Clause 22, section 22.2.4.
-  Based on my I2C_CONTROLLER. 
-  
-  Target: Marvell 88E1111 PHY. Using Rev M of datasheet.
-
-  This can run up to 8.3 MHz per section 2.9 of data sheet, and as slow as DC.
-*/
+ * MII management interface per 802.3-2022 Spec Clause 22, section 22.2.4.
+ * Based on my I2C_CONTROLLER.
+ *
+ * Target: Marvell 88E1111 PHY. Using Rev M of datasheet.
+ *
+ * Note: the FPGA is sometimes "STA" and sometimes "MAC". The Marvell chip is
+ * always "PHY".
+ * 
+ * This can run up to 8.3 MHz per section 2.9 of data sheet, and as slow as DC.
+ *
+ * "The 88E1111 device is permanently programmed for preamble suppression.
+ * A minimum of one idle bit is required between operations." (2.9.2)
+ * We will always send the full preamble, just for good measure.
+ *
+ * There is no documentation on what to do when we're in a reset,
+ * or how the Management Interface will handle things. Should I keep the
+ * clock running? If the PHY is also in reset, does it read the Management Interface?
+ * No idea.
+ *
+ * What should we do while idling? Turn off the MDC? Leave MDIO at low?
+ *
+ * Caller: Assert activate while !busy until the busy signal activates.
+ * If activate is asserted while busy, wait until it goes !busy then busy.
+ */
 
 
 module mii_management_interface #(
@@ -43,7 +60,7 @@ module mii_management_interface #(
   
   // Outputs about what's going on
   output logic busy,    // We're busy communicating
-  output logic success, // When !busy, did we complete the last request successfully?
+  output logic success, // When busy -> !busy, did we complete the last request successfully?
   
   // Inputs asking for something to do:
   // We only support a 3 byte transaction for now.
@@ -54,6 +71,113 @@ module mii_management_interface #(
   input  logic [15:0] data_out,    // Data to send when !read
   output logic [15:0] data_in      // Data read when read
 );
+
+// FIXME: Ensure that CLK_DIV is at least 2
+
+// Our main states in our I2C state machine
+localparam S_RESET    = 4'd0,
+           S_IDLE     = 4'd1, // MDIO = z (pulled high by external pull-up)
+           S_PREAMBLE = 4'd2, // 32 1 bits
+           S_SOF      = 4'd3, // Start of frame (01)
+           S_OPCODE   = 4'd4, // Read 10, Write 01
+           S_PHYADDR  = 4'd5, // 5 bits
+           S_REGADDR  = 4'd6, // 5 bits
+           S_TA       = 4'd7, // Turnaround: Read = Z0 (by PHY), Write = 10 (by STA)
+           S_DATA     = 4'd8; // and back to IDLE
+
+
+
+// Clock divider counter
+localparam CLK_DIV_CNT_ONE = { {(CLK_CNT_SZ-1){1'b0}}, 1'b1 }; // 1 in the proper bit width
+localparam CLK_CNT_MAX = CLK_DIV - 1;
+logic [CLK_CNT_SZ:0] clk_div_cnt;
+
+// Our state machine       
+logic [3:0] state = S_RESET;
+
+// Our steps to make the MDC
+// 0 1 2 3
+// _/---\_
+// 0: clock starts low
+// 1: clock transitions high
+// 2: clock remains high
+// 3: clock returns/transitions low
+logic [1:0] step;
+
+
+
+always_ff @(posedge clk) begin
+
+  // If we are being reset
+  if (reset) begin
+    state <= S_RESET;
+    // Since this can be asserted for a bunch of clock cycles,
+    // update our important external signals
+    busy <= 1;
+    success <= 0;
+    // Turn off our outputs
+    mdio_e <= 0;
+    mdc <= 0; // Turn clock off
+    step <= 0; // Reset the clock step when we do begin
+    // Reset our clock divider counter
+    clk_div_cnt <= 0;
+
+    // TODO: If we get a reset when not idle, now what?
+
+  end else if (clk_div_cnt != 0) begin ////////////////////////////////////
+  
+    // Do nothing until we get to our divider
+    if (clk_div_cnt == CLK_CNT_MAX)
+      clk_div_cnt <= 0;
+    else
+      clk_div_cnt <= clk_div_cnt + CLK_DIV_CNT_ONE;
+    
+  end else begin //////////////////////////////////////////////////////////
+  
+    // Count is 0 on our clock divider now, so move it to 1.
+    clk_div_cnt <= CLK_DIV_CNT_ONE;
+
+    // Not resetting, not waiting for system clock to hit our divider, so:
+    // do our proper 4x speed I2C state machine, finally.
+
+    case (state)
+
+      S_RESET: begin /////////////////////////////////////////////////
+        busy <= 1; // We're powering up
+        // We have no previous status
+        success <= 0;
+        // Turn off our outputs
+        mdio_e <= 0;
+        // Move to our idle state
+        state <= S_IDLE;
+        step <= 0; // Clock step
+      end // S_RESET case
+
+      S_IDLE: begin ///////////////////////////////////////////////////
+
+        mdio_e <= 0;
+
+        // Do we run our clock with no output? Sounds good to me.
+        case (step)
+          0: begin mdc <= 0; step <= 2'd1; end
+          1: begin mdc <= 1; step <= 2'd2; end
+          2: begin mdc <= 1; step <= 2'd3; end
+          3: begin mdc <= 0; step <= 2'd0;
+            if (activate) begin
+              // TODO: CODE ME
+            end
+          end
+        endcase // S_IDLE step
+
+      end // S_IDLE
+
+      // TODO: CODE ME (all other states)
+
+    endcase // state
+
+  end // not reset
+
+end // always_ff main state machine
 
 endmodule
 
