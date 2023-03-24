@@ -203,7 +203,7 @@ module EthernetRepeater(
 
 // Zero out unused outputs
 always_comb begin
-  LEDG[7:4] = '0;
+  LEDG[7] = '0;
   LEDR[17:16] = '0;
   HEX0 = '1;
   HEX1 = '1;
@@ -333,10 +333,13 @@ logic mi_activate = '0;
 
 // What should we activate?
 logic        mi_read = '1;
-logic  [4:0] mi_phy_address = 5'b0_0000;
+logic  [4:0] mi_phy_address = 5'b1_0001; // 10000 for ENET0, 10001 for ENET1
 logic  [4:0] mi_register = 5'b0_0000;
-logic [15:0] mi_data_in;
+logic [15:0] mi_data_in = '0;
 logic [15:0] mi_data_out = '0;
+
+// Set true if we ever saw busy from MI
+logic ever_busy_mi = '0;
 
 ////////////////////////////////////////////////////////////////////////////////////
 
@@ -353,15 +356,17 @@ ALTIOBUF ALTIOBUF_mdio ( // OPEN DRAIN!!!
 // Tie everything to ETH1 and our display
 always_comb begin
   ENET1_MDC = mdc;
-  ENET1_RST_N = '0; // Take chip out of reset
+  ENET1_RST_N = '1; // Take chip out of reset
   // ENET1_MDIO = mdio;
 
   // Show the results
-  LEDR[15:0] = mi_data_out;
+  LEDR[15:0] = mi_data_in;
   LEDG[0] = mi_busy;
   LEDG[1] = mi_success;
   LEDG[2] = mi_activate;
   LEDG[3] = mdc;
+  LEDG[4] = mi_activated;
+  LEDG[5] = ever_busy_mi;
 end
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -412,6 +417,10 @@ always_ff @(posedge CLOCK_50) begin
   end else if (mi_busy) begin
     // Deactivate after the MI starts working on it
     mi_activate <= '0;
+  end
+
+  if (mi_busy) begin
+    ever_busy_mi <= '1;
   end
 end
 
