@@ -18,8 +18,11 @@ add wave -noupdate -divider DUT
 add wave -noupdate /test_mii_management_interface/dut/state
 add wave -noupdate /test_mii_management_interface/dut/mdc_step
 add wave -noupdate /test_mii_management_interface/dut/state_count
+add wave -noupdate /test_mii_management_interface/dut/stop_send_at
+add wave -noupdate /test_mii_management_interface/dut/state_after_send
+add wave -noupdate /test_mii_management_interface/dut/read_error
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {670000 ps} 0}
+WaveRestoreCursors {{Cursor 1} {38254797 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 297
 configure wave -valuecolwidth 100
@@ -35,4 +38,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {11310690 ps}
+WaveRestoreZoom {29784637 ps} {45716252 ps}

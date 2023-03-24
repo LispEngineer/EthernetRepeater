@@ -66,11 +66,6 @@ mii_management_interface #(
 );
 
 always_comb begin
-  mii_activate = '1;
-  mii_read = '0;
-  mii_phy_address = 5'b1_0101;
-  mii_register = 5'b0_1100;
-  mii_data_out = 16'hDEAD;
 end
 
 // initialize test with a reset for 22 ns
@@ -78,9 +73,19 @@ initial begin
   $display("Starting Simulation @ ", $time);
   clk <= 1'b0;
   reset <= 1'b1; 
+  mii_activate <= '1;
+  mii_read <= '0;
+  mii_phy_address <= 5'b1_0101;
+  mii_register <= 5'b0_1100;
+  mii_data_out <= 16'hDEAD;
   #22; reset <= 1'b0;
+  // It runs the first cycle in about 15,000 ns, so for the second, try this:
+  #12000;
+  mii_read <= '1;
+  mii_phy_address <= 5'b0_1010;
+  mii_register <= 5'b1_1001;
   // Stop the simulation at appropriate point
-  #48000;
+  #36000;
   $display("Ending simulation @ ", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!

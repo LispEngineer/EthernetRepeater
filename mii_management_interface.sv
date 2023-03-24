@@ -135,8 +135,8 @@ localparam OPCODE_S = 29,
 localparam OP_READ = 2'b10,
            OP_WRITE = 2'b01;
 // When do we move to the next state after sending bits?
-localparam SEND_LAST_READ = 0,
-           SEND_LAST_WRITE = 2 + 16;
+localparam SEND_LAST_READ = 2 + 16,
+           SEND_LAST_WRITE = 0;
 localparam READ_LEN = 16;
 
 // How many times through we are in the current state?
@@ -234,6 +234,7 @@ always_ff @(posedge clk) begin
         if (activate && mdc_step == 2'd3) begin
           // We need to send and maybe receive, so figure out what to do
           busy <= '1;
+          state <= S_SEND;
           state_count <= 'd63; // Send from MSB to LSB
           stop_send_at <= read ? SEND_LAST_READ : SEND_LAST_WRITE;
           state_after_send <= read ? S_RTA : S_IDLE;

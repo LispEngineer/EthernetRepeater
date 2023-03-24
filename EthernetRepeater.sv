@@ -288,6 +288,8 @@ end
 
 // Tristate unused inouts
 always_comb begin
+`ifdef IS_QUARTUS
+  // For some reason, this makes Questa unhappy
   EX_IO = 'z;
   LCD_DATA = 'z;
   PS2_CLK = 'z;
@@ -313,6 +315,7 @@ always_comb begin
   DVI_TX_DDCSCL = 'z;
   DVI_TX_DDCSDA = 'z;
   DVI_TX_SDA = 'z;
+`endif
 end
 
 logic [31:0] counter = 0;
