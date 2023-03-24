@@ -121,6 +121,7 @@ logic [3:0] state = S_RESET;
 // 2 bit turnaround (10 for write, z0 for read, but we don't send that)
 // 16 bits write data (bit 15 / MSB first)
 // = 32 + 2 + 2 + 5 + 5 + 2 + 16 = 64 bits total
+// Initialize register to the desired bits
 logic [63:0] send_bits = { {32{1'b1}}, 2'b01, 2'b01, 5'b0000, 5'b0000, 2'b10, 16'b0 };
 // The start and end points of the send_bits for things that we will have to change
 localparam OPCODE_S = 29,
@@ -134,15 +135,15 @@ localparam OPCODE_S = 29,
 // Opcodes
 localparam OP_READ = 2'b10,
            OP_WRITE = 2'b01;
-// Send length for the two opcodes
-localparam SEND_LEN_READ = 32 + 2 + 2 + 5 + 5,
-           SEND_LEN_WRITE = SEND_LEN_READ + 2 + 16;
+// When do we move to the next state after sending bits?
+localparam SEND_LAST_READ = 0,
+           SEND_LAST_WRITE = 2 + 16;
 localparam READ_LEN = 16;
 
 // How many times through we are in the current state?
 logic [5:0] state_count;
 // How many bits are we going to send?
-logic [5:0] send_count;
+logic [5:0] stop_send_at;
 // What state do we go to after sending?
 logic [3:0] state_after_send;
 
@@ -155,20 +156,22 @@ logic [3:0] state_after_send;
 // 3: clock returns/transitions low
 logic [1:0] mdc_step;
 
+logic read_error;
+
 
 // Handle our MDC clock state machine
 always_ff @(posedge clk) begin
-  if (reset) begin
+  if (reset || state == S_RESET) begin
     // Turn off our clock
-    mdc <= 0;
-    mdc_step <= 0;
-  end else if (clk_div_cnt == 0) begin
+    mdc <= '0;
+    mdc_step <= '0;
+  end else if (clk_div_cnt == '0) begin
     // Run our clock
     case (mdc_step)
-      2'd0: begin mdc <= 0; mdc_step <= 2'd1; end
-      2'd1: begin mdc <= 1; mdc_step <= 2'd2; end
-      2'd2: begin mdc <= 1; mdc_step <= 2'd3; end
-      2'd3: begin mdc <= 0; mdc_step <= 2'd0; end
+      2'd0: begin mdc <= '0; mdc_step <= 2'd1; end
+      2'd1: begin mdc <= '1; mdc_step <= 2'd2; end
+      2'd2: begin mdc <= '1; mdc_step <= 2'd3; end
+      2'd3: begin mdc <= '0; mdc_step <= 2'd0; end
     endcase // S_IDLE step
   end
 end // MDC clock state machine
@@ -183,24 +186,26 @@ always_ff @(posedge clk) begin
     state <= S_RESET;
     // Since this can be asserted for a bunch of clock cycles,
     // update our important external signals
-    busy <= 1;
-    success <= 0;
+    busy <= '1;
+    success <= '0;
     // Turn off our outputs
-    mdio_e <= 0;
+    mdio_e <= '0;
     // Reset our clock divider counter
-    clk_div_cnt <= 0;
+    clk_div_cnt <= '0;
 
     // TODO: If we get a reset when not idle, now what?
 
-  end else if (clk_div_cnt != 0) begin ////////////////////////////////////
+  end else if (clk_div_cnt != '0) begin ////////////////////////////////////
   
     // Do nothing until we get to our divider
     if (clk_div_cnt == CLK_CNT_MAX)
-      clk_div_cnt <= 0;
+      clk_div_cnt <= '0;
     else
       clk_div_cnt <= clk_div_cnt + CLK_DIV_CNT_ONE;
     
   end else begin //////////////////////////////////////////////////////////
+
+    // FIXME: Handle the `success` output!
   
     // Count is 0 on our clock divider now, so move it to 1.
     clk_div_cnt <= CLK_DIV_CNT_ONE;
@@ -211,36 +216,103 @@ always_ff @(posedge clk) begin
     case (state)
 
       S_RESET: begin /////////////////////////////////////////////////
-        busy <= 1; // We're powering up
+        busy <= '1; // We're unavailable
         // We have no previous status
-        success <= 0;
+        success <= '0;
         // Turn off our outputs
-        mdio_e <= 0;
-        // Move to our idle state
+        mdio_e <= '0;
+        // Move to our idle state once we're done reseting
         state <= S_IDLE;
       end // S_RESET case
 
       S_IDLE: begin ///////////////////////////////////////////////////
+        // We're idling at Z MDIO with the clock running
 
-        mdio_e <= 0; // z during idle per 22.2.4.5.1
+        mdio_e <= '0; // z during idle per 22.2.4.5.1
 
         // Do we stop our clock during idle?
         busy <= '0;
-        if (mdc_step == 2'd3 && activate) begin
+        if (activate && mdc_step == 2'd3) begin
           // We need to send and maybe receive, so figure out what to do
           busy <= '1;
-          state_count <= '0;
-          send_count <= read ? SEND_LEN_READ : SEND_LEN_WRITE;
+          state_count <= 'd63; // Send from MSB to LSB
+          stop_send_at <= read ? SEND_LAST_READ : SEND_LAST_WRITE;
           state_after_send <= read ? S_RTA : S_IDLE;
-          send_bits[OPCODE_S:OPCODE_E] = read ? OP_READ : OP_WRITE;
-          send_bits[PHYAD_S : PHYAD_E] = phy_address;
-          send_bits[REGAD_S : REGAD_E] = register;
-          send_bits[DATA_S  :  DATA_E] = data_out;
+          send_bits[OPCODE_S:OPCODE_E] <= read ? OP_READ : OP_WRITE;
+          send_bits[PHYAD_S : PHYAD_E] <= phy_address;
+          send_bits[REGAD_S : REGAD_E] <= register;
+          send_bits[DATA_S  :  DATA_E] <= data_out;
+          read_error <= '0;
         end
 
       end // S_IDLE
 
-      // TODO: CODE ME (all other states)
+      S_SEND: begin ////////////////////////////////////////////////////
+
+        // Sending bits - will be read at clock raise
+        mdio_e <= '1;
+        mdio_o <= send_bits[state_count];
+
+        // Are we done sending?
+        if (mdc_step == 2'd3) begin
+          if (state_count == stop_send_at) begin
+            // Okay, done sending, move to next state
+            state_count <= '0;
+            state <= state_after_send;
+          end else begin
+            // Send the next bit
+            state_count <= state_count - 1'd1;
+          end
+        end
+      end // S_SEND
+
+      S_RTA: begin //////////////////////////////////////////////////////
+
+        // Do a receive turn-around, which means we will:
+        // First bit: tristate MDIO
+        mdio_e <= '0;
+
+        // Second bit: read zero (if we don't, it's an error)
+        // We prefer to "sample MDIO during the second half of the low cycle"
+        // but we will actually do it in the first half of the low cycle
+        // because our MDC state machine final state is first half of low
+        if (mdc_step == 2'd3) begin
+
+          if (state_count[0]) begin
+            // In the second bit now
+            read_error <= mdio_i; // IF we read a 1, that is an error
+            state <= S_RECEIVE;
+            state_count <= '0;
+          end else begin
+            // In the first bit, so move to the second bit
+            state_count[0] <= '1;
+          end
+        end // update state on final part of clock
+      end // S_RTA
+
+      S_RECEIVE: begin //////////////////////////////////////////////////
+        mdio_e <= '0; // This should already be set from S_RTA
+
+        // We have to read 16 data bits
+        if (mdc_step == 2'd3) begin
+          // We prefer to "sample MDIO during the second half of the low cycle"
+          // but we will actually do it in the first half of the low cycle
+          // because our MDC state machine final state is first half of low
+          data_in[15:1] <= data_in[14:0];
+          data_in[0] <= mdio_i;
+
+          if (state_count == 'd15) begin
+            // Last bit was read
+            state <= S_IDLE;
+          end else begin
+            state_count <= state_count + 1'd1;
+          end
+        end
+      end // S_RECEIVE
+
+      default: begin //////////////////////////////////////////////////////
+        state <= S_RESET;
+      end
 
     endcase // state
 
