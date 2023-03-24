@@ -56,7 +56,6 @@
  * SEND = send a lot of bits (then IDLE for WRITE, then RTA for READ)
  * RTA = Receive Turnaround (Z then read a 0)
  * RECEIVE = READ 15 bits
-
  */
 
 
@@ -194,6 +193,8 @@ always_ff @(posedge clk) begin
     clk_div_cnt <= '0;
 
     // TODO: If we get a reset when not idle, now what?
+    // We may leave the PHY Management Interface in an odd state if it isn't
+    // ALSO being reset.
 
   end else if (clk_div_cnt != '0) begin ////////////////////////////////////
   
@@ -205,8 +206,6 @@ always_ff @(posedge clk) begin
     
   end else begin //////////////////////////////////////////////////////////
 
-    // FIXME: Handle the `success` output!
-  
     // Count is 0 on our clock divider now, so move it to 1.
     clk_div_cnt <= CLK_DIV_CNT_ONE;
 
@@ -243,6 +242,7 @@ always_ff @(posedge clk) begin
           send_bits[REGAD_S : REGAD_E] <= register;
           send_bits[DATA_S  :  DATA_E] <= data_out;
           read_error <= '0;
+          success <= '0; // Reset our success flag
         end
 
       end // S_IDLE
@@ -259,6 +259,8 @@ always_ff @(posedge clk) begin
             // Okay, done sending, move to next state
             state_count <= '0;
             state <= state_after_send;
+            // If we're just sending, we're done and cannot fail
+            success <= state_after_send == S_IDLE;
           end else begin
             // Send the next bit
             state_count <= state_count - 1'd1;
@@ -304,6 +306,7 @@ always_ff @(posedge clk) begin
           if (state_count == 'd15) begin
             // Last bit was read
             state <= S_IDLE;
+            success <= !read_error;
           end else begin
             state_count <= state_count + 1'd1;
           end
