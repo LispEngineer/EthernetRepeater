@@ -54,7 +54,7 @@ mii_management_interface #(
 
   // Status
   .busy(mii_busy),
-  .success(mii_success)
+  .success(mii_success),
 
   // Management interface inputs
   .activate(mii_activate),
@@ -63,7 +63,7 @@ mii_management_interface #(
   .register(mii_register),
   .data_out(mii_data_out),
   .data_in(mii_data_in)
-)
+);
 
 always_comb begin
   mii_activate = '1;
