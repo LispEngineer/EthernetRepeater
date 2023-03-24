@@ -19,7 +19,7 @@ logic  reset;
 // The internal wires for Management Interface
 logic mdc, mdio_i, mdio_o, mdio_e;
 
-// Status of I2C controller
+// Status of MI controller
 logic mii_busy, mii_success;
 
 // Should we do the activate thing

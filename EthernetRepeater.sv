@@ -25,7 +25,7 @@ module EthernetRepeater(
   input  logic  [3:0] KEY,
 
   //////////// EX_IO //////////
-  inout  logic  [6:0] EX_IO,
+  inout  wire   [6:0] EX_IO,
 
   //////////// SW //////////
   input  logic [17:0] SW,
@@ -43,7 +43,7 @@ module EthernetRepeater(
 
   //////////// LCD //////////
   output logic        LCD_BLON,
-  inout  logic  [7:0] LCD_DATA,
+  inout  wire   [7:0] LCD_DATA,
   output logic        LCD_EN,
   output logic        LCD_ON,
   output logic        LCD_RS,
@@ -56,15 +56,15 @@ module EthernetRepeater(
   output logic        UART_TXD,
 
   //////////// PS2 for Keyboard and Mouse //////////
-  inout  logic        PS2_CLK,
-  inout  logic        PS2_CLK2,
-  inout  logic        PS2_DAT,
-  inout  logic        PS2_DAT2,
+  inout  wire         PS2_CLK,
+  inout  wire         PS2_CLK2,
+  inout  wire         PS2_DAT,
+  inout  wire         PS2_DAT2,
 
   //////////// SDCARD //////////
   output logic        SD_CLK,
-  inout  logic        SD_CMD,
-  inout  logic  [3:0] SD_DAT,
+  inout  wire         SD_CMD,
+  inout  wire   [3:0] SD_DAT,
   input  logic        SD_WP_N,
 
   //////////// VGA //////////
@@ -79,26 +79,26 @@ module EthernetRepeater(
 
   //////////// Audio //////////
   input  logic        AUD_ADCDAT,
-  inout  logic        AUD_ADCLRCK,
-  inout  logic        AUD_BCLK,
+  inout  wire         AUD_ADCLRCK,
+  inout  wire         AUD_BCLK,
   output logic        AUD_DACDAT,
-  inout  logic        AUD_DACLRCK,
+  inout  wire         AUD_DACLRCK,
   output logic        AUD_XCK,
 
   //////////// I2C for EEPROM //////////
   output logic        EEP_I2C_SCLK,
-  inout  logic        EEP_I2C_SDAT,
+  inout  wire         EEP_I2C_SDAT,
 
   //////////// I2C for Audio HSMC  //////////
   output logic        I2C_SCLK,
-  inout  logic        I2C_SDAT,
+  inout  wire         I2C_SDAT,
 
   //////////// Ethernet 0 //////////
   output logic        ENET0_GTX_CLK,
   input  logic        ENET0_INT_N,
   input  logic        ENET0_LINK100,
   output logic        ENET0_MDC,
-  inout  logic        ENET0_MDIO,
+  inout  wire         ENET0_MDIO,
   output logic        ENET0_RST_N,
   input  logic        ENET0_RX_CLK,
   input  logic        ENET0_RX_COL,
@@ -117,7 +117,7 @@ module EthernetRepeater(
   input  logic        ENET1_INT_N,
   input  logic        ENET1_LINK100,
   output logic        ENET1_MDC,
-  inout  logic        ENET1_MDIO,
+  inout  wire         ENET1_MDIO,
   output logic        ENET1_RST_N,
   input  logic        ENET1_RX_CLK,
   input  logic        ENET1_RX_COL,
@@ -133,7 +133,7 @@ module EthernetRepeater(
   //////////// USB 2.0 OTG (Cypress CY7C67200) //////////
   output logic  [1:0] OTG_ADDR,
   output logic        OTG_CS_N,
-  inout  logic [15:0] OTG_DATA,
+  inout  wire  [15:0] OTG_DATA,
   input  logic        OTG_INT,
   output logic        OTG_RD_N,
   output logic        OTG_RST_N,
@@ -146,7 +146,7 @@ module EthernetRepeater(
   output logic        DRAM_CKE,
   output logic        DRAM_CLK,
   output logic        DRAM_CS_N,
-  inout  logic [31:0] DRAM_DQ,
+  inout  wire  [31:0] DRAM_DQ,
   output logic  [3:0] DRAM_DQM,
   output logic        DRAM_RAS_N,
   output logic        DRAM_WE_N,
@@ -154,7 +154,7 @@ module EthernetRepeater(
   //////////// SRAM //////////
   output logic [19:0] SRAM_ADDR,
   output logic        SRAM_CE_N,
-  inout  logic [15:0] SRAM_DQ,
+  inout  wire  [15:0] SRAM_DQ,
   output logic        SRAM_LB_N,
   output logic        SRAM_OE_N,
   output logic        SRAM_UB_N,
@@ -163,7 +163,7 @@ module EthernetRepeater(
   //////////// Flash //////////
   output logic [22:0] FL_ADDR,
   output logic        FL_CE_N,
-  inout  logic  [7:0] FL_DQ,
+  inout  wire   [7:0] FL_DQ,
   output logic        FL_OE_N,
   output logic        FL_RST_N,
   input  logic        FL_RY,
@@ -171,15 +171,15 @@ module EthernetRepeater(
   output logic        FL_WP_N,
 
   //////////// GPIO, GPIO connect to GPIO Default //////////
-  inout  logic [35:0] GPIO,
+  inout  wire  [35:0] GPIO,
 
   //////////// HSMC, HSMC connect to DVI - FullHD TX/RX //////////
   output logic        DVI_EDID_WP,
   input  logic        DVI_RX_CLK,
   input  logic  [3:1] DVI_RX_CTL,
   input  logic [23:0] DVI_RX_D,
-  inout  logic        DVI_RX_DDCSCL,
-  inout  logic        DVI_RX_DDCSDA,
+  inout  wire         DVI_RX_DDCSCL,
+  inout  wire         DVI_RX_DDCSDA,
   input  logic        DVI_RX_DE,
   input  logic        DVI_RX_HS,
   input  logic        DVI_RX_SCDT,
@@ -187,8 +187,8 @@ module EthernetRepeater(
   output logic        DVI_TX_CLK,
   output logic  [3:1] DVI_TX_CTL,
   output logic [23:0] DVI_TX_D,
-  inout  logic        DVI_TX_DDCSCL,
-  inout  logic        DVI_TX_DDCSDA,
+  inout  wire         DVI_TX_DDCSCL,
+  inout  wire         DVI_TX_DDCSDA,
   output logic        DVI_TX_DE,
   output logic        DVI_TX_DKEN,
   output logic        DVI_TX_HS,
@@ -197,14 +197,14 @@ module EthernetRepeater(
   output logic        DVI_TX_MSEN,
   output logic        DVI_TX_PD_N,
   output logic        DVI_TX_SCL,
-  inout  logic        DVI_TX_SDA,
+  inout  wire         DVI_TX_SDA,
   output logic        DVI_TX_VS
 );
 
 // Zero out unused outputs
 always_comb begin
-  LEDG[8:4] = '0;
-  LEDR = '0;
+  LEDG[7:4] = '0;
+  LEDR[17:16] = '0;
   HEX0 = '1;
   HEX1 = '1;
   HEX2 = '1;
@@ -254,8 +254,8 @@ always_comb begin
   ENET0_TX_DATA = '0;
   ENET1_TX_DATA = '0;
   ENET1_GTX_CLK = '0;
-  ENET1_MDC = '0;
-  ENET1_RST_N = '1;
+  // ENET1_MDC = '0;
+  // ENET1_RST_N = '0;
   ENET1_TX_EN = '0;
   ENET1_TX_ER = '0;
   OTG_ADDR = '0;
@@ -304,7 +304,7 @@ always_comb begin
   EEP_I2C_SDAT = 'z;
   I2C_SDAT = 'z;
   ENET0_MDIO = 'z;
-  ENET1_MDIO = 'z;
+  // ENET1_MDIO = 'z;
   OTG_DATA = 'z;
   DRAM_DQ = 'z;
   SRAM_DQ = 'z;
@@ -318,13 +318,116 @@ always_comb begin
 `endif
 end
 
-logic [31:0] counter = 0;
+///////////////////////////////////////////////////////////////////////////////
+// Use Ethernet Management Interface
+// Read the output of register 0 after 3 seconds
 
-always_ff @(posedge CLOCK_50) begin
-  counter <= counter + 1;
+// The internal wires for Management Interface
+logic mdc, mdio_i, mdio_o, mdio_e;
+
+// Status of I2C controller
+logic mi_busy, mi_success;
+
+// Should we do the activate thing
+logic mi_activate = '0;
+
+// What should we activate?
+logic        mi_read = '1;
+logic  [4:0] mi_phy_address = 5'b0_0000;
+logic  [4:0] mi_register = 5'b0_0000;
+logic [15:0] mi_data_in;
+logic [15:0] mi_data_out = '0;
+
+////////////////////////////////////////////////////////////////////////////////////
+
+// Use an ALTIOBUF with open-drain set for MDIO.
+// Datain means IN TO THE BUFFER, which would be OUT FROM THIS MODULE
+// and hence OUT TO THE EXTERNAL PIN
+ALTIOBUF ALTIOBUF_mdio ( // OPEN DRAIN!!!
+	.dataio  (ENET1_MDIO),
+	.oe      (mdio_e),
+	.datain  (mdio_o),
+	.dataout (mdio_i)
+);
+
+// Tie everything to ETH1 and our display
+always_comb begin
+  ENET1_MDC = mdc;
+  ENET1_RST_N = '0; // Take chip out of reset
+  // ENET1_MDIO = mdio;
+
+  // Show the results
+  LEDR[15:0] = mi_data_out;
+  LEDG[0] = mi_busy;
+  LEDG[1] = mi_success;
+  LEDG[2] = mi_activate;
+  LEDG[3] = mdc;
 end
 
-assign LEDG[3:0] = counter[28:25];
+////////////////////////////////////////////////////////////////////////////////////
+
+
+// Instantiate one MII Management Interface
+mii_management_interface
+  // Leave all parameters at default
+  mii_management_interface1 (
+  // Controller clock & reset
+  .clk(CLOCK_50),
+  .reset('0), // FIXME: NO RESET YET
+
+  // External management bus connections
+  .mdc(mdc),
+  .mdio_e(mdio_e), .mdio_i(mdio_i), .mdio_o(mdio_o),
+
+  // Status
+  .busy(mi_busy),
+  .success(mi_success),
+
+  // Management interface inputs
+  .activate   (mi_activate),
+  .read       (mi_read),
+  .phy_address(mi_phy_address),
+  .register   (mi_register),
+  .data_out   (mi_data_out),
+  .data_in    (mi_data_in)
+);
+
+
+
+// Turn on activate after 3 seconds - 150,000,000 cycles
+localparam WHEN_ACTIVATE = 3 * 150_000_000;
+localparam WA_SZ = $clog2(WHEN_ACTIVATE);
+logic [WA_SZ:0] activate_counter = WHEN_ACTIVATE;
+logic mi_activated = '0;
+
+always_ff @(posedge CLOCK_50) begin
+  if (!mi_activated) begin
+    // Activate when the appropriate delay is over
+    if (activate_counter == '0) begin
+      mi_activated <= '1;
+      mi_activate <= '1;
+    end else begin
+      activate_counter <= activate_counter - 1'd1;
+    end
+  end else if (mi_busy) begin
+    // Deactivate after the MI starts working on it
+    mi_activate <= '0;
+  end
+end
+
+
+
+
+// LED BLINKER TOP LEVEL //////////////////////////////////////////////////////
+
+logic [31:0] counter = '0;
+
+always_ff @(posedge CLOCK_50) begin
+  counter <= counter + 1'd1;
+end
+
+// Give a heartbeat
+assign LEDG[8] = counter[26];
 
 endmodule
 

@@ -76,7 +76,22 @@ added by HSMC card. Some useful features:
 * Enable reduced preamble mode for Management Interface?
 
 
+# Notes on FPGA Resources
 
+## ALTIOBUF
+
+[Intel ALTIOBUF docs](https://www.intel.com/content/www/us/en/docs/programmable/683471/19-1/ip-core-user-guide.html)
+
+* Add `ALTIOBUF`
+* Bidirectional buffer
+* Use open drain output (like I2C bus, MDC is pulled high)
+  * From docs: "can be asserted by multiple devices in your system"
+* Do not generate a netlist (we don't use a 3P EDA synthesis tool)
+* Generate the Instantiation Template File (not really needed, it's easy, but whatever)
+* Generate the Symbol File (although we won't use it)
+
+Remember - the `inout` must be a SystemVerilog `wire` and not `logic` or else it
+won't work.
 
 # Notes on Test Harness
 
