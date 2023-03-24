@@ -64,6 +64,12 @@ added by HSMC card. Some useful features:
 * During Management Interface idle periods - should I continue to run MDC?
   * Seems unnecessary and a waste of energy
 
+## Known Bugs
+
+* On my DE2-115, enabling the Ethernet (RST_N to 1) on both ports
+  causes ETH0 to be unreponsive when plugged in, but ETH1 reponds
+  just fine and lights up 1000, DUP, RX lights.
+
 # TODO
 
 * Simulate the PHY side of the Management Interface (for reads)

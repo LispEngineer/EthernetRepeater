@@ -248,14 +248,14 @@ always_comb begin
   I2C_SCLK = '0;
   ENET0_GTX_CLK = '0;
   ENET0_MDC = '0;
-  ENET0_RST_N = '0;
+  ENET0_RST_N = '1; // DISABLE Ethernet Reset, see if it comes up on its own
   ENET0_TX_EN = '0;
   ENET0_TX_ER = '0;
   ENET0_TX_DATA = '0;
   ENET1_TX_DATA = '0;
   ENET1_GTX_CLK = '0;
   ENET1_MDC = '0;
-  ENET1_RST_N = '0;
+  ENET1_RST_N = '1;
   ENET1_TX_EN = '0;
   ENET1_TX_ER = '0;
   OTG_ADDR = '0;
