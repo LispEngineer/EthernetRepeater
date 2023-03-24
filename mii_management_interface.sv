@@ -38,12 +38,32 @@
  *
  * Caller: Assert activate while !busy until the busy signal activates.
  * If activate is asserted while busy, wait until it goes !busy then busy.
+ *
+ * Exact timing details from Wikipedia:
+ * 1. When the MAC drives the MDIO line, it has to guarantee a stable value 10 ns 
+ *    (setup time) before the rising edge of the clock MDC. Further, MDIO has to 
+ *    remain stable 10 ns (hold time) after the rising edge of MDC.
+ * 2. When the PHY drives the MDIO line, the PHY has to provide the MDIO signal between 
+ *    0 and 300 ns after the rising edge of the clock. Hence, with a minimum clock period 
+ *    of 400 ns (2.5 MHz maximum clock rate) the MAC can safely sample MDIO during the 
+ *    second half of the low cycle of the clock
+ * Source: https://en.wikipedia.org/wiki/Management_Data_Input/Output
+ * Source: https://prodigytechno.com/mdio-management-data-input-output/
+ *
+ * We will have only 5 states:
+ * RESET = do nothing
+ * IDLE = MDIO z, clock ticking (or not)
+ * SEND = send a lot of bits (then IDLE for WRITE, then RTA for READ)
+ * RTA = Receive Turnaround (Z then read a 0)
+ * RECEIVE = READ 15 bits
+
  */
 
 
 module mii_management_interface #(
   // Every this many clocks we should do something, at 4x MDC clock speed
   // 4  gives 12.50 MHz from 50 MHz system, MDC of 3.125 MHz
+  // 5  gives 10.00 MHz from 50 MHz system, MDC of 2.5 MHz
   // 8  gives  6.25 MHz from 50 MHz system, MDC of ~1.56 MHz
   // 32 gives ~1.56 MHz from 50 MHz system, MDC of ~391 kHz
   parameter CLK_DIV = 32,
@@ -81,13 +101,9 @@ module mii_management_interface #(
 // Our main states in our Management Interface state machine
 localparam S_RESET    = 4'd0,
            S_IDLE     = 4'd1, // MDIO = z (pulled high by external pull-up)
-           S_PREAMBLE = 4'd2, // 32x1 bits
-           S_SOF      = 4'd3, // Start of frame: 01
-           S_OPCODE   = 4'd4, // Read 10, Write 01
-           S_PHYADDR  = 4'd5, // 5 bits (MSB first)
-           S_REGADDR  = 4'd6, // 5 bits (MSB first)
-           S_TA       = 4'd7, // Turnaround: Read = Z0 (by PHY), Write = 10 (by STA)
-           S_DATA     = 4'd8; // 16 bits, MSB First, then back to IDLE
+           S_SEND     = 4'd2, // Everything up to TA for read, or everything for write
+           S_RTA      = 4'd3, // Receive Turnaround, Z then read 0
+           S_RECEIVE  = 4'd4; // Read 16 bits
 
 // Clock divider counter
 localparam CLK_DIV_CNT_ONE = { {(CLK_CNT_SZ-1){1'b0}}, 1'b1 }; // 1 in the proper bit width
@@ -97,6 +113,39 @@ logic [CLK_CNT_SZ:0] clk_div_cnt;
 // Our state machine       
 logic [3:0] state = S_RESET;
 
+// 32 preamble 1s
+// 01 start of frame
+// 01 read or 10 write opcode
+// 5 bit phy address MSB first
+// 5 bit register address MSB first
+// 2 bit turnaround (10 for write, z0 for read, but we don't send that)
+// 16 bits write data (bit 15 / MSB first)
+// = 32 + 2 + 2 + 5 + 5 + 2 + 16 = 64 bits total
+logic [63:0] send_bits = { {32{1'b1}}, 2'b01, 2'b01, 5'b0000, 5'b0000, 2'b10, 16'b0 };
+// The start and end points of the send_bits for things that we will have to change
+localparam OPCODE_S = 29,
+           OPCODE_E = 28,
+           PHYAD_S = 27,
+           PHYAD_E = 23,
+           REGAD_S = 22,
+           REGAD_E = 18,
+           DATA_S = 15,
+           DATA_E = 0;
+// Opcodes
+localparam OP_READ = 2'b10,
+           OP_WRITE = 2'b01;
+// Send length for the two opcodes
+localparam SEND_LEN_READ = 32 + 2 + 2 + 5 + 5,
+           SEND_LEN_WRITE = SEND_LEN_READ + 2 + 16;
+localparam READ_LEN = 16;
+
+// How many times through we are in the current state?
+logic [5:0] state_count;
+// How many bits are we going to send?
+logic [5:0] send_count;
+// What state do we go to after sending?
+logic [3:0] state_after_send;
+
 // Our steps to make the MDC (management interface clock)
 // 0 1 2 3 0 1
 // _/‾‾‾\___/‾
@@ -104,10 +153,29 @@ logic [3:0] state = S_RESET;
 // 1: clock transitions high
 // 2: clock remains high
 // 3: clock returns/transitions low
-logic [1:0] step;
+logic [1:0] mdc_step;
+
+
+// Handle our MDC clock state machine
+always_ff @(posedge clk) begin
+  if (reset) begin
+    // Turn off our clock
+    mdc <= 0;
+    mdc_step <= 0;
+  end else if (clk_div_cnt == 0) begin
+    // Run our clock
+    case (mdc_step)
+      2'd0: begin mdc <= 0; mdc_step <= 2'd1; end
+      2'd1: begin mdc <= 1; mdc_step <= 2'd2; end
+      2'd2: begin mdc <= 1; mdc_step <= 2'd3; end
+      2'd3: begin mdc <= 0; mdc_step <= 2'd0; end
+    endcase // S_IDLE step
+  end
+end // MDC clock state machine
 
 
 
+// Handle our main state machine
 always_ff @(posedge clk) begin
 
   // If we are being reset
@@ -119,8 +187,6 @@ always_ff @(posedge clk) begin
     success <= 0;
     // Turn off our outputs
     mdio_e <= 0;
-    mdc <= 0; // Turn clock off
-    step <= 0; // Reset the clock step when we do begin
     // Reset our clock divider counter
     clk_div_cnt <= 0;
 
@@ -152,24 +218,25 @@ always_ff @(posedge clk) begin
         mdio_e <= 0;
         // Move to our idle state
         state <= S_IDLE;
-        step <= 0; // Clock step
       end // S_RESET case
 
       S_IDLE: begin ///////////////////////////////////////////////////
 
         mdio_e <= 0; // z during idle per 22.2.4.5.1
 
-        // Do we run our clock with no output? Sounds good to me.
-        case (step)
-          0: begin mdc <= 0; step <= 2'd1; end
-          1: begin mdc <= 1; step <= 2'd2; end
-          2: begin mdc <= 1; step <= 2'd3; end
-          3: begin mdc <= 0; step <= 2'd0;
-            if (activate) begin
-              // TODO: CODE ME
-            end
-          end
-        endcase // S_IDLE step
+        // Do we stop our clock during idle?
+        busy <= '0;
+        if (mdc_step == 2'd3 && activate) begin
+          // We need to send and maybe receive, so figure out what to do
+          busy <= '1;
+          state_count <= '0;
+          send_count <= read ? SEND_LEN_READ : SEND_LEN_WRITE;
+          state_after_send <= read ? S_RTA : S_IDLE;
+          send_bits[OPCODE_S:OPCODE_E] = read ? OP_READ : OP_WRITE;
+          send_bits[PHYAD_S : PHYAD_E] = phy_address;
+          send_bits[REGAD_S : REGAD_E] = register;
+          send_bits[DATA_S  :  DATA_E] = data_out;
+        end
 
       end // S_IDLE
 
