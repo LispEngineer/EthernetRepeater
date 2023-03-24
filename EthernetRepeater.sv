@@ -331,10 +331,16 @@ logic mi_busy, mi_success;
 // Should we do the activate thing
 logic mi_activate = '0;
 
+// Register IDs
+localparam R_CONTROL = 5'd0,
+           R_STATUS = 5'd1,
+           R_PHY_ID_1 = 5'd2,
+           R_PHY_ID_2 = 5'd3;
+
 // What should we activate?
 logic        mi_read = '1;
 logic  [4:0] mi_phy_address = 5'b1_0001; // 10000 for ENET0, 10001 for ENET1
-logic  [4:0] mi_register = 5'b0_0000;
+logic  [4:0] mi_register = R_STATUS;
 logic [15:0] mi_data_in = '0;
 logic [15:0] mi_data_out = '0;
 
@@ -373,9 +379,10 @@ end
 
 
 // Instantiate one MII Management Interface
-mii_management_interface
-  // Leave all parameters at default
-  mii_management_interface1 (
+mii_management_interface #(
+  // Leave all parameters at default, usually
+  .CLK_DIV(60)
+) mii_management_interface1 (
   // Controller clock & reset
   .clk(CLOCK_50),
   .reset('0), // FIXME: NO RESET YET

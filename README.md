@@ -120,3 +120,127 @@ Setting up Quartus to load the Test Harness in Questa
   * This is a long command in `VSIM ##>` prompt
 * Then you can type at the `VSIM ##>` prompt `restart -f ; run -all`
 
+
+
+# DE2-115 and Marvel 88E1111
+
+Docs:
+* https://ftp.intel.com/Public/Pub/fpgaup/pub/Teaching_Materials/current/Tutorials/DE2-115/Using_Triple_Speed_Ethernet.pdf
+* https://people.ece.cornell.edu/land/courses/ece5760/FinalProjects/f2011/mis47_ayg6/mis47_ayg6/
+* https://www.analog.com/media/en/technical-documentation/application-notes/ee-269.pdf
+* https://www.allaboutcircuits.com/ip-cores/communication-controller/sgmii/
+* https://lantian.pub/en/article/modify-computer/cyclone-iv-fpga-development-bugs-resolve.lantian/
+* https://github.com/alexforencich/verilog-ethernet
+* https://github.com/xddxdd/zjui-ece385-final
+* https://core.ac.uk/download/pdf/224741175.pdf
+* https://www.fpga-cores.com/cores/fc1001_mii/
+* https://fraserinnovations.com/fpga-board-based/how-ethernet-work-and-familiar-with-mii-gmii-rgmii-interface-types-fii-prx100-risc-v-board-experiment-15/
+* https://prodigytechno.com/mdio-management-data-input-output/
+* https://medium.com/@Frank_pan/how-to-use-ethernet-components-in-fpga-altera-de2-115-26659da06362
+* https://en.wikipedia.org/wiki/Media-independent_interface#cite_note-802.3-2
+
+Linux to keep FCS & bad CRCs
+* https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
+
+
+Per schematic, only 4 RXD/TXD lines are connected to FPGA from Marvell Alaska 88E1111.
+
+CONFIG wiring pins on DE2-115:
+
+                      Table 32      Table 12
+    0 - ground        000 (VSS)     PHY_ADR[2:0]
+    1 - LED_LINK10    110           PHY_ADR[4:3] and ENA_PAUSE; PHY_ADR[6:5] fixed 10
+    2 - VCC           111 (VDDO)    ANEG[3:1]
+    3 - LED_TX        001           ANEG[0], ENA_XC, DIS_125
+    4 - (see below)   011 or 111    HWCFG_MODE[2:0]
+    5 - VCC           111 (VDDO)    DIS_FC, DIS_SLEEP, HWCFG_MODE[3]
+    6 - LED_RX        010           SEL_TWSI, INT_POL, 75/50 Ohm
+    (ENET_VCC2P5 is fed to VDDOX, VDDOH, VDDO. VSSC is fed to ground)
+
+See Table 34 for exact bit details, and Table 35 for meanings:
+
+    PHY_ADR[6:0] = 10 10 000
+    ANEG[3:0]    = 1110 = Auto-Neg, advertise all capabilities, prefer Master
+    ENA_XC       = 0 = Disable (MDI Crossover)
+    DIS_125      = 1 = Disable 125CLK
+    HWCFG_MODE[3:0] = 1011 or 1111 - RGMII or GMII
+    DIS_FC       = 1 = Disable fiber/copper auto select
+    DIS_SLEEP    = 1 = Disable energy detect
+    SEL_TWSI     = 0 = Select MDC/MDIO interface
+    INT_POL      = 1 = INTn signal is active LOW
+    75_50_OHM    = 0 = 50 ohm termination for fiber
+
+
+Looks like `RST_N`, `MDC`, `MDIO`, and `INT_N` are all pulled high by 4.7k.
+`RSET` and `TRST_N` are pulled low.
+JTAG is not configured.
+`XTAL1` gets 25MHZ.
+
+`JP1/2` on Pins 2-3 will set `MII` mode; on 1-2 will set `RGMII` mode (4 bit)
+This goes to CONFIG4 pin, which can be either:
+* 011 - LED_DUPLEX
+* 111 - VDDO (which is ENET_VCC2P5 in the docs)a
+
+MII Mode: (p.54)
+* 100BASE-TX - TX_CLK, RX_CLK source 25 MHz
+* 10BASE-T - they source 2.5 MHz
+
+Revision M of Marvell spec:
+* 2.2.1 is GMII/MII
+* 2.2.3 is RGMII
+
+#### 2.8 Power management
+COMA pin is tied low per schematic
+
+#### 2.9 Management Interface
+IEEE 802.3u clause 22
+https://en.wikipedia.org/wiki/Management_Data_Input/Output
+
+Per schematics:
+* Eth0 PHY: 101 0000
+* Eth1 PHY: 101 0001
+
+`MDIO`: Pull-up by 1.5 - 10 kohm
+
+`MDC` - maximum 8.3 MHz (120 ns period, per 4.15.1)
+
+Preamble = 32 bits of 1; Suppression allows this to become just one 1
+
+It seems a lot like a I2C/IIC interface but with fixed function and
+fixed read/write size (16 bits).
+
+The picture makes it look like the value is sampled on the rising edge
+of the clock.
+
+#### 3. Register Description
+
+This contains all the registers details
+
+#### 4. This section contains the timing diagrams
+
+#### IEEE 802.3-2022
+
+SEE IEEE 802.3-2022 section 22.2.2.13-14 (page 714)
+and 22.2.4 page 717
+
+(Note: It is not clear to me if the Ethernet CRC has to be sent as part of the data
+or if the PHY will do that., per Standard 22.2.3. I am guessing the PHY does NOT do that.)
+
+Std Table 22-6 lists the registers.
+22.2.4.1.1 says reset cannot take more than 0.5 sec.
+
+22.2.4.5 has the management frame structure
+
+22.2.4.5.5 Transmit PHY MSB first (5 bits)
+  You can always use an address of 00000 if there is only one device connected!
+22.2.4.5.6 Also transmit register address MSB first
+22.2.4.5.7 TA Turnaround
+  Read: Z then PHY 0
+  Write: 10
+22.2.4.5.8 DATA is transmitted MSB first
+
+22.3.4 MDIO/MDC timing 
+* "When the STA sources the MDIO signal, the STA shall provide a minimum of 10 ns of setup time and a 
+minimum of 10 ns of hold time referenced to the rising edge of MDC"
+* "When the MDIO signal is sourced by the PHY, it is sampled by the STA synchronously with respect to the
+rising edge of MDC."
