@@ -262,6 +262,10 @@ always_ff @(posedge clk) begin
             state <= state_after_send;
             // If we're just sending, we're done and cannot fail
             success <= state_after_send == S_IDLE;
+            // No matter what if we're done sending we are going to IDLE
+            // or we are going to Receive turn around so we need to go to
+            // tristate the MDIO output.
+            mdio_e <= '0;
           end else begin
             // Send the next bit
             state_count <= state_count - 1'd1;

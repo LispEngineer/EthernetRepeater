@@ -77,6 +77,25 @@ added by HSMC card. Some useful features:
 ## Known Bugs
 
 * Read data seems to give bits 14:0 in positions 15:1 and always 1 in position [0].
+
+Using SignalTap, I see that what I think MDC is doing and what it is actually doing
+is offset by one mdc_step.
+
+Desired:
+
+    0 1 2 3 0 1
+    _/‾‾‾\___/‾
+
+Actual:
+
+    3 0 1 2 3 0
+    _/‾‾‾\___/‾
+
+This is caused because during 0 I tell it to go low, during 1,
+I tell it to go high, and so forth, but the actual move is in the
+next clock, rather than the current clock.
+
+### Hardware Bugs
 * ETH0 is dead: On my DE2-115, enabling the Ethernet (RST_N to 1) on both ports
   causes ETH0 to be unreponsive when plugged in, but ETH1 reponds
   just fine and lights up 1000, DUP, RX lights.
