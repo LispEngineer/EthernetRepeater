@@ -56,8 +56,18 @@ added by HSMC card. Some useful features:
 # Current Functionality
 
 * Management Interface
-  * Not tested on real PHY
+  * Tested on real PHY - see bugs below
   * Visually simulated in Questa
+
+## User Interface
+
+* Red LEDs 15-0: Data read from registers
+* Green LED 8: Heartbeat
+* Green LEDs 5-0: Status (see code)
+* KEY 3: Reset Ethernet PHY (only)
+* SW 4-0: Register address
+* KEY 0: Read from register in SW 4-0
+
 
 ## Open Questions
 
@@ -66,7 +76,8 @@ added by HSMC card. Some useful features:
 
 ## Known Bugs
 
-* On my DE2-115, enabling the Ethernet (RST_N to 1) on both ports
+* Read data seems to give bits 14:0 in positions 15:1 and always 1 in position [0].
+* ETH0 is dead: On my DE2-115, enabling the Ethernet (RST_N to 1) on both ports
   causes ETH0 to be unreponsive when plugged in, but ETH1 reponds
   just fine and lights up 1000, DUP, RX lights.
 

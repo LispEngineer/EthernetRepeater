@@ -205,7 +205,7 @@ module EthernetRepeater(
 always_comb begin
   LEDG[7] = '0;
   LEDR[17:16] = '0;
-  HEX0 = '1;
+  HEX0 = '1; // These LED segments are OFF when logic 1
   HEX1 = '1;
   HEX2 = '1;
   HEX3 = '1;
@@ -252,12 +252,12 @@ always_comb begin
   ENET0_TX_EN = '0;
   ENET0_TX_ER = '0;
   ENET0_TX_DATA = '0;
-  ENET1_TX_DATA = '0;
-  ENET1_GTX_CLK = '0;
+  // ENET1_TX_DATA = '0;
+  // ENET1_GTX_CLK = '0;
   // ENET1_MDC = '0;
   // ENET1_RST_N = '0;
-  ENET1_TX_EN = '0;
-  ENET1_TX_ER = '0;
+  // ENET1_TX_EN = '0;
+  // ENET1_TX_ER = '0;
   OTG_ADDR = '0;
   OTG_CS_N = '0;
   OTG_RD_N = '0;
@@ -362,8 +362,14 @@ ALTIOBUF ALTIOBUF_mdio ( // OPEN DRAIN!!!
 // Tie everything to ETH1 and our display
 always_comb begin
   ENET1_MDC = mdc;
-  ENET1_RST_N = '1; // Take chip out of reset
+  ENET1_RST_N = KEY[3]; // Take chip out of reset (with logical 1)
   // ENET1_MDIO = mdio;
+
+  ENET1_TX_DATA = '0;
+  ENET1_GTX_CLK = '0;
+  ENET1_TX_EN = '0;
+  ENET1_TX_ER = '0;
+
 
   // Show the results
   LEDR[15:0] = mi_data_in;
@@ -385,7 +391,7 @@ mii_management_interface #(
 ) mii_management_interface1 (
   // Controller clock & reset
   .clk(CLOCK_50),
-  .reset('0), // FIXME: NO RESET YET
+  .reset('0),
 
   // External management bus connections
   .mdc(mdc),
@@ -406,31 +412,41 @@ mii_management_interface #(
 
 
 
-// Turn on activate after 3 seconds - 150,000,000 cycles
-localparam WHEN_ACTIVATE = 3 * 150_000_000;
-localparam WA_SZ = $clog2(WHEN_ACTIVATE);
-logic [WA_SZ:0] activate_counter = WHEN_ACTIVATE;
-logic mi_activated = '0;
+// Read and display status when a button is pushed, for the specified
+// register from switches 4:0.
+// Note: "Each push-button switch provides a high logic level when it is not pressed,
+//        and provides a low logic level when depressed."
+logic [3:0] last_key = '1;
+logic last_mi_busy = '0;
 
 always_ff @(posedge CLOCK_50) begin
-  if (!mi_activated) begin
-    // Activate when the appropriate delay is over
-    if (activate_counter == '0) begin
-      mi_activated <= '1;
-      mi_activate <= '1;
-    end else begin
-      activate_counter <= activate_counter - 1'd1;
-    end
-  end else if (mi_busy) begin
-    // Deactivate after the MI starts working on it
+  last_key <= KEY;
+  last_mi_busy <= mi_busy;
+
+  // TODO: Handle reset
+
+  if (!mi_busy && last_mi_busy) begin
+    // We need to handle the completion of a command
+    // Nothing really to do
+
+  end else if (mi_busy && mi_activate) begin
+    // Command just started
     mi_activate <= '0;
-  end
-
-  if (mi_busy) begin
     ever_busy_mi <= '1;
+  end else if (mi_busy) begin
+    // The MI is busy, so track that it became busy
+    ever_busy_mi <= '1;
+  end else if (mi_activate) begin
+    // Do nothing
+  end else if (!mi_busy && !mi_activate && !KEY[0] && KEY[0] != last_key[0]) begin
+    // We're not busy, not awaiting activation, and the key was just pressed
+    // (remember key down reports logic 0)
+    mi_activate <= '1;
+    mi_register <= SW[4:0];
+    ever_busy_mi <= '0;
   end
-end
 
+end
 
 
 
