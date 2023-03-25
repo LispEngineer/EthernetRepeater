@@ -135,8 +135,8 @@ localparam OPCODE_S = 29,
 localparam OP_READ = 2'b10,
            OP_WRITE = 2'b01;
 // When do we move to the next state after sending bits?
-localparam SEND_LAST_READ = 2 + 16,
-           SEND_LAST_WRITE = 0;
+localparam SEND_LAST_READ = 6'd18, // 2 + 16
+           SEND_LAST_WRITE = 6'd0;
 localparam READ_LEN = 16;
 
 // How many times through we are in the current state?

@@ -92,6 +92,9 @@ added by HSMC card. Some useful features:
 
 ## Known Bugs
 
+* Sometimes I have to send the request a few times to get it to respond
+  differently
+
 ### Fixed Bugs
 
 * Read data seems to give bits 14:0 in positions 15:1 and always 1 in position [0].
@@ -135,6 +138,53 @@ next clock when it's loaded into the FF, rather than the current clock.
 Remember - the `inout` must be a SystemVerilog `wire` and not `logic` or else it
 won't work.
 
+
+
+
+
+
+# Notes on Ubuntu & Wireshark
+
+* `ethtool`
+  * `ethtool enp175s0` - shows the status of that link
+  * `ethtool -K _device_ rx-fcs on` - accept frames with bad FCS (checksum)
+  * `ethtool -K _device_ rx-all on` - accept all other invalid frames (like runts)
+    * [source](https://isc.sans.edu/diary/Not+all+Ethernet+NICs+are+Created+Equal+Trying+to+Capture+Invalid+Ethernet+Frames/25896)
+  * `ethtool -k _device_` shows all device capabilities
+  * `ethtool -s enp175s0 autoneg on speed 10 duplex full` forces 10BASE-T full duplex
+
+* `ip`
+  * `ip link show enp175s0` - shows status of that link
+  * `ip link set _device_ promisc on` - turn on promiscuous mode
+
+* `ifconfig`
+  * `ifconfig _device_ promisc` - turn on promiscuous mode
+
+* `arping`
+  * `arping -t enp175s0 -S 10.10.10.10 -B` - force an ARP packet out that interface with this made up IP address
+
+
+## Wireshark
+
+* Documents/Tutorials
+  * [Tutorial](https://www.varonis.com/blog/how-to-use-wireshark)
+
+* [Capture Privileges](https://wiki.wireshark.org/CaptureSetup/CapturePrivileges#most-unixes)
+  * Or just run as `root`
+
+* Seeing FCS?
+  * [Stack Overflow](https://ask.wireshark.org/question/2876/how-to-see-the-fcs-in-ethernet-frames/)
+    says it's probably impossible
+  * [Another Stack Overflow](https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul) tells about how to use
+    the `ethtool` above
+  * [Wireshark FAQ on FCS](https://www.wireshark.org/faq.html#_how_can_i_capture_entire_frames_including_the_fcs)
+
+
+* [Network Tap](https://en.wikipedia.org/wiki/Network_tap)
+  * [LANProbe](https://qlinxtech.com/lanprobe)
+  * [DualComm](https://www.dualcomm.com/collections/featured-products/products/usb-powered-10-100-1000base-t-network-tap)
+  * [ProfiShark 1G](https://blog.packet-foo.com/2014/12/a-look-at-a-portable-usb3-network-tap/)
+
 # Notes on Test Harness
 
 Ensure Quartus Settings -> Simulation shows `Questa Intel FPGA`
@@ -162,7 +212,57 @@ Setting up Quartus to load the Test Harness in Questa
   * This is a long command in `VSIM ##>` prompt
 * Then you can type at the `VSIM ##>` prompt `restart -f ; run -all`
 
+## SignalTap
 
+* To disable SignalTap again, go to Assignments -> Settings -> SignalTap and unclick Enable
+
+
+# Example Ethernet Frame
+
+This is an ARP ethernet Frame
+
+    ff ff ff ff ff ff - to everyone
+    06 e0 4c DF DF DF - from whoever we are
+    08 06 - ARP (type/len)
+    FROM HERE IS ARP
+    00 01 - Ethernet
+    00 00 - IPv4 ARP
+    06 - hardware size
+    04 - protocol size
+    00 01 - opcode - request
+    06 e0 4c DF DF DF - sender MAC address (same as above)
+    10 20 DF DF - our IPv4 Address
+    00 00 00 00 00 00 - target MAC address (anyone)
+    ff ff ff ff - target IP address (anyone)
+    00 .. 00 - trailer (16x 00's)
+    xx xx xx xx - checksum
+
+    ff ff ff ff ff ff
+    06 e0 4c DF DF DF
+    08 06
+    00 01
+    00 00
+    06
+    04
+    00 01
+    06 e0 4c DF DF DF
+    10 20 DF DF
+    00 00 00 00 00 00
+    ff ff ff ff
+    00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00
+    75 0B 4B 43 (or maybe it's the other way around)
+
+* CRC = `0x750B4B43`
+* [Online CRC Calculator](https://crccalc.com/?crc=ff+ff+ff+ff+ff+ff++06+e0+4c+DF+DF+DF++08+06++00+01++00+00++06++04++00+01++06+e0+4c+DF+DF+DF++10+20+DF+DF++00+00+00+00+00+00++ff+ff+ff+ff++00+00+00+00+00+00+00+00+00+00+00+00+00+00+00+00&method=crc32&datatype=hex&outtype=0)
+
+## CRC Calculators
+
+* [SO Question](https://stackoverflow.com/questions/40017293/check-fcs-ethernet-frame-crc-32-online-tools)
+* [CRC calculator](https://www.scadacore.com/tools/programming-calculators/online-checksum-calculator/)
+* [CRC Algorithms](https://reveng.sourceforge.io/crc-catalogue/17plus.htm#crc.cat-bits.32/) - see CRC-32/ISO-HDLC
+* [CRC Verilog Language Generator](https://bues.ch/cms/hacking/crcgen)
+* [Another one](http://www.sunshine2k.de/coding/javascript/crc/crc_js.html)
 
 # DE2-115 and Marvel 88E1111
 
@@ -180,12 +280,17 @@ Docs:
 * https://prodigytechno.com/mdio-management-data-input-output/
 * https://medium.com/@Frank_pan/how-to-use-ethernet-components-in-fpga-altera-de2-115-26659da06362
 * https://en.wikipedia.org/wiki/Media-independent_interface#cite_note-802.3-2
+* [U-boot Initialization](https://github.com/RobertCNelson/u-boot/blob/master/drivers/net/phy/marvell.c)
 * RGMII:
   * https://www.renesas.com/us/en/document/apn/guide-using-rgmii-making-ethernet-if-connection
   * [AN 477: Designing RGMII Interfaces with FPGAs and HardCopy 
      ASICs](https://cdrdv2-public.intel.com/654563/an477.pdf)
   * [Intel Triple-Speed Ethernet](https://www.intel.com/content/www/us/en/docs/programmable/683402/22-4-21-1-0/about-this-ip.html)
   * [RGMII Timing for EthernetFMC](https://ethernetfmc.com/docs/user-guide/rgmii-timing/)
+  * [RGMII experiment](https://fraserinnovations.com/fpga-board-based/how-does-ethernet-work-mii-gmii-rgmii-interface-advantages-and-disadvantages-fii-pra004-altera-risc-v-tutorial-experiment-14/)
+  * [Stack Overflow](https://stackoverflow.com/questions/15777399/clarification-on-ethernet-mii-sgmii-rgmii-and-phy)
+  * [Xilinx notes](https://docs.xilinx.com/r/en-US/pg160-gmii-to-rgmii/RGMII-Interface-Protocols)
+  * [RGMII v2.0 Spec](https://web.archive.org/web/20160303171328/http://www.hp.com/rnd/pdfs/RGMIIv2_0_final_hp.pdf)
 
 Linux to keep FCS & bad CRCs
 * https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
@@ -297,3 +402,39 @@ rising edge of MDC."
 ## Experimental learnings with 88E1111
 
 * During RST_N (reset) it will not respond to Management Interface.
+
+## 88E1111 Register Notes
+
+* Register 0x11 (17) Page 0 - PHY Specific Status Register - Copper
+  * Bits 15-14: Speed
+  * Bit 13: Duplex
+  * In 10/Full it shows:
+    * 0010_1101_0000_1100
+    * Speed: 10
+    * Duplex: Full
+    * Page not reeived
+    * Speed & duplex resolved
+    * Link up
+    * Cable length 80-110m (which is funny since it has a 3' cable)
+    * MDI
+    * No Downshift
+    * PHY ACtive
+    * Transmit pause enabled
+    * Receive pause enabled
+    * Normal polarity
+    * No jabber
+* Register 0x01 (1) Page 0 - Status Register
+  * In 10/Full it shows:
+  * 0111_1001_0110_1101
+  * 100BASE-T4 incapable
+  * 100BASE-T FD & HD capable
+  * 10BASE-T FD & HD capable
+  * 100BASE-T2 FD/HD incapable
+  * Extended status available in Register 15
+  * Preamble suppression allowed (management frames)
+  * Auto-negotiation complete (bit 5, copper)
+  * No copper remote fault detected
+  * Able to auto-negotiate
+  * Link up (bit 2)
+  * No Jabber
+  * Extended register capability - yes
