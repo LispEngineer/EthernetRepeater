@@ -17,6 +17,82 @@
 // If the `gtx_clk` needs to be skewed, it has to happen outside of here.
 // In non-DDR mode, we transmit the low nibble first!
 
+// Our fixed send data, for now
+module data_packet (
+  input  logic [5:0] addr,
+  output logic [7:0] val
+);
+
+always_comb
+  case (addr)
+  6'd0: val = 8'hff;
+  6'd1: val = 8'hff;
+  6'd2: val = 8'hff;
+  6'd3: val = 8'hff;
+  6'd4: val = 8'hff;
+  6'd5: val = 8'hff;
+  6'd6: val = 8'h06;
+  6'd7: val = 8'he0;
+  6'd8: val = 8'h4c;
+  6'd9: val = 8'hDF;
+  6'd10: val = 8'hDF;
+  6'd11: val = 8'hDF;
+  6'd12: val = 8'h08;
+  6'd13: val = 8'h06;
+  6'd14: val = 8'h00;
+  6'd15: val = 8'h01;
+  6'd16: val = 8'h00;
+  6'd17: val = 8'h00;
+  6'd18: val = 8'h06;
+  6'd19: val = 8'h04;
+  6'd20: val = 8'h00;
+  6'd21: val = 8'h01;
+  6'd22: val = 8'h06;
+  6'd23: val = 8'he0;
+  6'd24: val = 8'h4c;
+  6'd25: val = 8'hDF;
+  6'd26: val = 8'hDF;
+  6'd27: val = 8'hDF;
+  6'd28: val = 8'h10;
+  6'd29: val = 8'h20;
+  6'd30: val = 8'hDF;
+  6'd31: val = 8'hDF;
+  6'd32: val = 8'h00;
+  6'd33: val = 8'h00;
+  6'd34: val = 8'h00;
+  6'd35: val = 8'h00;
+  6'd36: val = 8'h00;
+  6'd37: val = 8'h00;
+  6'd38: val = 8'hff;
+  6'd39: val = 8'hff;
+  6'd40: val = 8'hff;
+  6'd41: val = 8'hff;
+  6'd42: val = 8'h00;
+  6'd43: val = 8'h00;
+  6'd44: val = 8'h00;
+  6'd45: val = 8'h00;
+  6'd46: val = 8'h00;
+  6'd47: val = 8'h00;
+  6'd48: val = 8'h00;
+  6'd49: val = 8'h00;
+  6'd50: val = 8'h00;
+  6'd51: val = 8'h00;
+  6'd52: val = 8'h00;
+  6'd53: val = 8'h00;
+  6'd54: val = 8'h00;
+  6'd55: val = 8'h00;
+  6'd56: val = 8'h00;
+  6'd57: val = 8'h00;
+  6'd58: val = 8'h75; // CRC
+  6'd59: val = 8'h0B;
+  6'd60: val = 8'h4B;
+  6'd61: val = 8'h43;
+  default: val = 8'hff;
+  endcase
+
+endmodule // data_packet
+localparam LAST_DATA_BYTE = 6'd57; // plus 4 for CRC
+localparam LAST_CRC_BYTE = 6'd61;
 
 module rgmii_tx /* #(
   // No parameters, yet
@@ -65,6 +141,9 @@ logic nibble; // 0 = low nibble, 1 = high nibble
 // Which byte we are sending - max packet is about 2000 so use 11 bits
 logic [10:0] count;
 
+localparam BYTES_PREAMBLE = 8'b1010_1010;
+localparam BYTES_SFD      = 8'b1010_1011;
+
 
 localparam SYNC_LEN = 2;
 logic [(SYNC_LEN - 1):0] syncd_activate;
@@ -77,6 +156,13 @@ logic txn_ddr;
 // Our actual low-level logic registered signals for transmit enable & error
 logic tx_en;
 logic tx_err;
+
+logic [7:0] current_data;
+
+data_packet data_packet (
+  .addr(count),
+  .val(current_data)
+);
 
 always_comb begin
   gtx_clk = tx_clk;
@@ -91,7 +177,6 @@ always_ff @(posedge tx_clk) begin
   syncd_activate <= {syncd_activate[(SYNC_LEN - 2):0], activate};
   syncd_ddr_tx   <= {syncd_ddr_tx  [(SYNC_LEN - 2):0], ddr_tx};
 end // synchronizer
-
 
 // State machine
 always_ff @(posedge tx_clk) begin
@@ -144,9 +229,9 @@ always_ff @(posedge tx_clk) begin
           // Then first data byte:
           // txd0=d0, txd1=d1, txd2=d2, txd3=d3
           // txd0=d4, txd1=d5, txd2=d6, txd3=d7
+          // Serially, we would transmit LSB first, and then
+          // stick the lsb into txd0, txd1, txd2, txd3
 
-          tx_data_h <= 4'b1010;
-          tx_data_l <= 4'b1010; // Same on both sides, not DDR
           nibble <= ~nibble;
           if (nibble) begin
             count <= count + 1'd1;
@@ -154,8 +239,15 @@ always_ff @(posedge tx_clk) begin
               // We are sending our 7th byte, second nibble, move on to SFP
               state <= S_SFD;
             end
-          end // Top nibble
-        end !ddr
+            // FIXME: Confirm if [4:7] reverses the order
+            tx_data_h <= BYTES_PREAMBLE[4:7];
+            tx_data_l <= BYTES_PREAMBLE[4:7]; // Same on both sides, not DDR
+          end else begin 
+            // Bottom nibble sent first
+            tx_data_h <= BYTES_PREAMBLE[0:3];
+            tx_data_l <= BYTES_PREAMBLE[0:3]; // Same on both sides, not DDR
+          end
+        end // !ddr
         // FIXME: CODE txn_ddr
 
       end
@@ -168,11 +260,12 @@ always_ff @(posedge tx_clk) begin
           if (nibble) begin
             // Send our second half and move to sending data
             state <= S_DATA;
-            tx_data_h <= 4'b1011;
-            tx_data_l <= 4'b1011; // Same on both sides, not DDR
+            count <= '0;
+            tx_data_h <= BYTES_SFD[4:7];
+            tx_data_l <= BYTES_SFD[4:7]; // Same on both sides, not DDR
           end else begin
-            tx_data_h <= 4'b1010;
-            tx_data_l <= 4'b1010; // Same on both sides, not DDR
+            tx_data_h <= BYTES_SFD[0:3];
+            tx_data_l <= BYTES_SFD[0:3]; // Same on both sides, not DDR
           end
         end // !ddr
 
@@ -181,8 +274,27 @@ always_ff @(posedge tx_clk) begin
 
       S_DATA: begin ////////////////////////////////////////////////////
         // We are going to send the data of an ARP request
-        state <= S_FCS;
-        // FIXME: CODE ME
+
+        if (!txn_ddr) begin
+          nibble <= ~nibble;
+          if (!nibble) begin
+            // First half of our byte - lower part
+            tx_data_h <= current_data[4:7];
+            tx_data_l <= current_data[4:7];
+          end else begin
+            // Second half of our byte - higher part
+            tx_data_h <= current_data[0:3];
+            tx_data_l <= current_data[0:3];
+            count <= count + 1'd1;
+            // FIXME: For now we send CRC as part of data
+            if (count == LAST_CRC_BYTE) begin
+              state <= S_IDLE;
+              busy <= '0;
+            end
+          end
+        end
+        
+        // FIXME: CODE txn_ddr
       end
 
       S_FCS: begin ////////////////////////////////////////////////////
@@ -190,6 +302,7 @@ always_ff @(posedge tx_clk) begin
         state <= S_IDLE;
         busy <= '0;
         // FIXME: CODE ME
+        // FOR NOW: Is part of S_DATA
       end
 
       default: begin

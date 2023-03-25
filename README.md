@@ -285,6 +285,7 @@ Docs:
 * https://medium.com/@Frank_pan/how-to-use-ethernet-components-in-fpga-altera-de2-115-26659da06362
 * https://en.wikipedia.org/wiki/Media-independent_interface#cite_note-802.3-2
 * [U-boot Initialization](https://github.com/RobertCNelson/u-boot/blob/master/drivers/net/phy/marvell.c)
+
 * RGMII:
   * https://www.renesas.com/us/en/document/apn/guide-using-rgmii-making-ethernet-if-connection
   * [AN 477: Designing RGMII Interfaces with FPGAs and HardCopy 
@@ -295,6 +296,8 @@ Docs:
   * [Stack Overflow](https://stackoverflow.com/questions/15777399/clarification-on-ethernet-mii-sgmii-rgmii-and-phy)
   * [Xilinx notes](https://docs.xilinx.com/r/en-US/pg160-gmii-to-rgmii/RGMII-Interface-Protocols)
   * [RGMII v2.0 Spec](https://web.archive.org/web/20160303171328/http://www.hp.com/rnd/pdfs/RGMIIv2_0_final_hp.pdf)
+* Quartus
+  * [Inferring RAM](https://www.intel.com/content/www/us/en/docs/programmable/683082/22-3/simple-dual-port-dual-clock-synchronous-ram.html)
 
 Linux to keep FCS & bad CRCs
 * https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
