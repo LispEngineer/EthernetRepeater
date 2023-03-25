@@ -22,6 +22,7 @@ module EthernetRepeater(
   output logic [17:0] LEDR,
 
   //////////// KEY //////////
+  // These are logic 0 when pressed
   input  logic  [3:0] KEY,
 
   //////////// EX_IO //////////
@@ -32,6 +33,7 @@ module EthernetRepeater(
 
   //////////// SEG7 //////////
   // All of these use logic 0 to light up the segment
+  // These are off with logic 1
   output logic  [6:0] HEX0,
   output logic  [6:0] HEX1,
   output logic  [6:0] HEX2,
@@ -42,12 +44,13 @@ module EthernetRepeater(
   output logic  [6:0] HEX7,
 
   //////////// LCD //////////
-  output logic        LCD_BLON,
+  // See data sheet for initialization sequence
+  output logic        LCD_BLON, // Backlight - NOT CONNECTED
   inout  wire   [7:0] LCD_DATA,
-  output logic        LCD_EN,
-  output logic        LCD_ON,
-  output logic        LCD_RS,
-  output logic        LCD_RW,
+  output logic        LCD_EN, // Enable
+  output logic        LCD_ON, // LCD Power On/Off
+  output logic        LCD_RS, // 1 = Data, 0 = Instruction
+  output logic        LCD_RW, // 1 = Read, 0 = Write
 
   //////////// RS232 //////////
   input  logic        UART_CTS,
@@ -203,7 +206,7 @@ module EthernetRepeater(
 
 // Zero out unused outputs
 always_comb begin
-  LEDG[7] = '0;
+  LEDG[7:5] = '0;
   LEDR[17:16] = '0;
   HEX0 = '1; // These LED segments are OFF when logic 1
   HEX1 = '1;
@@ -226,13 +229,13 @@ always_comb begin
   DVI_TX_SCL = '0;
   DVI_TX_VS = '0;
   DVI_EDID_WP = '0;
-  LCD_BLON = '0;
+  LCD_BLON = '0; // Turn Backlight on? Shouldn't do anything
   LCD_EN = '0;
   LCD_RS = '0;
   LCD_RW = '0;
-  LCD_ON = '0;
+  LCD_ON = '0; // Turn LCD on
   UART_RTS = '0;
-  UART_TXD = '0;
+  UART_TXD = '1; // Marking means we're transmitting nothing
   SD_CLK = '0;
   VGA_R = '0;
   VGA_G = '0;
@@ -377,8 +380,7 @@ always_comb begin
   LEDG[1] = mi_success;
   LEDG[2] = mi_activate;
   LEDG[3] = mdc;
-  LEDG[4] = mi_activated;
-  LEDG[5] = ever_busy_mi;
+  LEDG[4] = ever_busy_mi;
 end
 
 ////////////////////////////////////////////////////////////////////////////////////
