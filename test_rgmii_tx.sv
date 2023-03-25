@@ -27,12 +27,46 @@ always begin
   #200 clk <= ~clk;
 end
 
+logic activate = '0;
+logic busy;
+
+logic [3:0] tx_data;
+logic [3:0] tx_data_h;
+logic [3:0] tx_data_l;
+logic tx_ctl_h, tx_ctl_l;
+logic tx_ctl;
+logic gtx_clk;
+
+rgmii_tx dut (
+  .tx_clk(clk),
+  .reset('0),
+  .ddr_tx('0),
+  .activate(activate),
+  .busy(busy),
+  .gtx_clk(gtx_clk),
+  .tx_data_h(tx_data_h),
+  .tx_data_l(tx_data_l),
+  .tx_ctl_h(tx_ctl_h),
+  .tx_ctl_l(tx_ctl_l)
+);
+
+// Make our DDR "actual output" signals
+always_comb begin
+  tx_data = gtx_clk ? tx_data_h : tx_data_l;
+  tx_ctl  = (gtx_clk && tx_ctl_h)  || (!gtx_clk && tx_ctl_l);
+end
+
 // initialize test with a reset for 22 ns
 initial begin
   $display("Starting Simulation @ ", $time);
   clk <= 1'b0;
   reset <= 1'b1; 
   #22; reset <= 1'b0;
+
+  activate <= '1;
+  #2000;
+  activate <= '0;
+
   // Stop the simulation at appropriate point
   #36000;
   $display("Ending simulation @ ", $time);
