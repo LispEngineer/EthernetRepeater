@@ -199,8 +199,9 @@ always_ff @(posedge tx_clk) begin
         tx_err <= '0;
         busy <= '0;
 
+        // FIXME: Add an interframe delay per spec, before activation.
+        // So, let's do this right when we become idle.
         if (real_activate) begin
-          // FIXME: Add an interframe delay per spec
           // We need to send a packet
           txn_ddr <= real_ddr_tx;
           busy <= '1;
@@ -289,7 +290,7 @@ always_ff @(posedge tx_clk) begin
             // FIXME: For now we send CRC as part of data
             if (count == LAST_CRC_BYTE) begin
               state <= S_IDLE;
-              busy <= '0;
+              // Let's stay busy until we're IN the idle state
             end
           end
         end
