@@ -68,7 +68,7 @@ initial begin
   activate <= '0;
 
   // Stop the simulation at appropriate point
-  #36000;
+  #64000;
   $display("Ending simulation @ ", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!

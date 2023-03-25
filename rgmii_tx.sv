@@ -239,13 +239,13 @@ always_ff @(posedge tx_clk) begin
               // We are sending our 7th byte, second nibble, move on to SFP
               state <= S_SFD;
             end
-            // FIXME: Confirm if [4:7] reverses the order
-            tx_data_h <= BYTES_PREAMBLE[4:7];
-            tx_data_l <= BYTES_PREAMBLE[4:7]; // Same on both sides, not DDR
+            tx_data_h <= {BYTES_PREAMBLE[4], BYTES_PREAMBLE[5], BYTES_PREAMBLE[6], BYTES_PREAMBLE[7]};
+            tx_data_l <= {BYTES_PREAMBLE[4], BYTES_PREAMBLE[5], BYTES_PREAMBLE[6], BYTES_PREAMBLE[7]};
           end else begin 
-            // Bottom nibble sent first
-            tx_data_h <= BYTES_PREAMBLE[0:3];
-            tx_data_l <= BYTES_PREAMBLE[0:3]; // Same on both sides, not DDR
+            // Bottom nibble sent first, LSB first
+            tx_data_h <= {BYTES_PREAMBLE[0], BYTES_PREAMBLE[1], BYTES_PREAMBLE[2], BYTES_PREAMBLE[3]};
+            tx_data_l <= {BYTES_PREAMBLE[0], BYTES_PREAMBLE[1], BYTES_PREAMBLE[2], BYTES_PREAMBLE[3]};
+            // Same on both sides, not DDR
           end
         end // !ddr
         // FIXME: CODE txn_ddr
@@ -261,11 +261,11 @@ always_ff @(posedge tx_clk) begin
             // Send our second half and move to sending data
             state <= S_DATA;
             count <= '0;
-            tx_data_h <= BYTES_SFD[4:7];
-            tx_data_l <= BYTES_SFD[4:7]; // Same on both sides, not DDR
+            tx_data_h <= {BYTES_SFD[4], BYTES_SFD[5], BYTES_SFD[6], BYTES_SFD[7]};
+            tx_data_l <= {BYTES_SFD[4], BYTES_SFD[5], BYTES_SFD[6], BYTES_SFD[7]};
           end else begin
-            tx_data_h <= BYTES_SFD[0:3];
-            tx_data_l <= BYTES_SFD[0:3]; // Same on both sides, not DDR
+            tx_data_h <= {BYTES_SFD[0], BYTES_SFD[1], BYTES_SFD[2], BYTES_SFD[3]};
+            tx_data_l <= {BYTES_SFD[0], BYTES_SFD[1], BYTES_SFD[2], BYTES_SFD[3]};
           end
         end // !ddr
 
@@ -279,12 +279,12 @@ always_ff @(posedge tx_clk) begin
           nibble <= ~nibble;
           if (!nibble) begin
             // First half of our byte - lower part
-            tx_data_h <= current_data[4:7];
-            tx_data_l <= current_data[4:7];
+            tx_data_h <= {current_data[0], current_data[1], current_data[2], current_data[3]};
+            tx_data_l <= {current_data[0], current_data[1], current_data[2], current_data[3]};
           end else begin
             // Second half of our byte - higher part
-            tx_data_h <= current_data[0:3];
-            tx_data_l <= current_data[0:3];
+            tx_data_h <= {current_data[4], current_data[5], current_data[6], current_data[7]};
+            tx_data_l <= {current_data[4], current_data[5], current_data[6], current_data[7]};
             count <= count + 1'd1;
             // FIXME: For now we send CRC as part of data
             if (count == LAST_CRC_BYTE) begin
@@ -293,7 +293,7 @@ always_ff @(posedge tx_clk) begin
             end
           end
         end
-        
+
         // FIXME: CODE txn_ddr
       end
 
