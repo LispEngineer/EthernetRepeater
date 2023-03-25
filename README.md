@@ -76,24 +76,20 @@ added by HSMC card. Some useful features:
 
 ## Known Bugs
 
+### Fixed Bugs
+
 * Read data seems to give bits 14:0 in positions 15:1 and always 1 in position [0].
+  * Fixed by reading the data from the PHY at a much earlier `mdc_step` (step 1 instead
+    of step 3). 
 
-Using SignalTap, I see that what I think MDC is doing and what it is actually doing
-is offset by one mdc_step.
-
-Desired:
-
-    0 1 2 3 0 1
-    _/‾‾‾\___/‾
-
-Actual:
+Using SignalTap, I see the actual `mdc` and `mdc_step` values:
 
     3 0 1 2 3 0
     _/‾‾‾\___/‾
 
-This is caused because during 0 I tell it to go low, during 1,
-I tell it to go high, and so forth, but the actual move is in the
-next clock, rather than the current clock.
+This is caused because during `mdc_step` 0 I tell `mdc` to go low, during 1,
+I tell it to go high, and so forth, but the actual change is in the
+next clock when it's loaded into the FF, rather than the current clock.
 
 ### Hardware Bugs
 * ETH0 is dead: On my DE2-115, enabling the Ethernet (RST_N to 1) on both ports
@@ -274,3 +270,8 @@ Std Table 22-6 lists the registers.
 minimum of 10 ns of hold time referenced to the rising edge of MDC"
 * "When the MDIO signal is sourced by the PHY, it is sampled by the STA synchronously with respect to the
 rising edge of MDC."
+
+
+## Experimental learnings with 88E1111
+
+* During RST_N (reset) it will not respond to Management Interface.

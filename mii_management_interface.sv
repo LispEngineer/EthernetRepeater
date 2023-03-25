@@ -166,6 +166,11 @@ always_ff @(posedge clk) begin
     mdc_step <= '0;
   end else if (clk_div_cnt == '0) begin
     // Run our clock
+    //
+    // Because the changes are registered,
+    // the actual clock output will be, DURING the stated mdc_step:
+    // 0 1 2 3 0 1
+    // ‾‾‾\___/‾‾‾
     case (mdc_step)
       2'd0: begin mdc <= '0; mdc_step <= 2'd1; end
       2'd1: begin mdc <= '1; mdc_step <= 2'd2; end
@@ -300,14 +305,16 @@ always_ff @(posedge clk) begin
       S_RECEIVE: begin //////////////////////////////////////////////////
         mdio_e <= '0; // This should already be set from S_RTA
 
-        // We have to read 16 data bits
-        if (mdc_step == 2'd3) begin
-          // We prefer to "sample MDIO during the second half of the low cycle"
-          // but we will actually do it in the first half of the low cycle
-          // because our MDC state machine final state is first half of low
+        // We have to read 16 data bits. Let's read on an earlier step to
+        // see if we can fix this off by one error?
+        // (Reading on step 2 didn't fix it; let's try step 1.)
+        if (mdc_step == 2'd1) begin
+          // Docs say to prefer to "sample MDIO during the second half of the low cycle"
+          // but this seems to cause sampling too late and we miss the first bit.
           data_in[15:1] <= data_in[14:0];
           data_in[0] <= mdio_i;
 
+        end else if (mdc_step == 2'd3) begin
           if (state_count == 'd15) begin
             // Last bit was read
             state <= S_IDLE;
