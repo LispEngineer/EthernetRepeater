@@ -69,7 +69,11 @@ added by HSMC card. Some useful features:
     * Duplex
   * Could handle interrupts
 * Simple RGMII TX interface
+  * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
+    * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
+  * Handle DDR
   * Handle all 3 speeds
+
 * Simple RGMII RX interface
   * Handle all 3 speeds
 * Simple CRC creator/checker added to TX/RX

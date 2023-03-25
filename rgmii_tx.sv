@@ -55,7 +55,7 @@ localparam S_IDLE = 3'd0,
            S_PREAMBLE = 3'd1, // 7 bytes (Preamble)
            S_SFD = 3'd2,      // 1 byte, (Start Frame Delimiter)
            S_DATA = 3'd3,     // 14 bytes Ethernet Header header, 46+ bytes data
-           S_FCS = 3'd4;      // 4 byte CRC (Frame Check Sequence)
+           S_FCS = 3'd4;      // 4 byte CRC (Frame Check Sequence)           
 logic [2:0] state = S_IDLE;
 
 localparam NIBBLE_LOW = 1'b0,
@@ -104,6 +104,9 @@ always_ff @(posedge tx_clk) begin
   
   end else begin ///////////////////////////////////////////////////////
 
+    // Remember: In the timing diagram, the transmissions will be one clock
+    // cycle behind the state, because it's all registered for the next cycle.
+
     case (state)
 
       S_IDLE: begin ////////////////////////////////////////////////////
@@ -112,6 +115,7 @@ always_ff @(posedge tx_clk) begin
         busy <= '0;
 
         if (real_activate) begin
+          // FIXME: Add an interframe delay per spec
           // We need to send a packet
           txn_ddr <= real_ddr_tx;
           busy <= '1;
@@ -129,6 +133,18 @@ always_ff @(posedge tx_clk) begin
         tx_err <= '0; // Not sure when we would ever set this
 
         if (!txn_ddr) begin
+
+          // Non-DDR (regular MII) mode:
+          // FIXME: Review Table 22-3 in 802.3-2022
+          // It seems that the txd[0] is MSB of nibble
+          // and txd[3] is LSB of the nibble.
+          // Example:
+          // Preamble: txd0=1, txd1=0, txd2=0, txd3=1 x15
+          //     then: txd0=1, txd1=0, txd2=1, txd3=1 x1
+          // Then first data byte:
+          // txd0=d0, txd1=d1, txd2=d2, txd3=d3
+          // txd0=d4, txd1=d5, txd2=d6, txd3=d7
+
           tx_data_h <= 4'b1010;
           tx_data_l <= 4'b1010; // Same on both sides, not DDR
           nibble <= ~nibble;
@@ -139,22 +155,38 @@ always_ff @(posedge tx_clk) begin
               state <= S_SFD;
             end
           end // Top nibble
-        end
+        end !ddr
         // FIXME: CODE txn_ddr
 
       end
 
       S_SFD: begin ////////////////////////////////////////////////////
-        state <= S_DATA;
-        // FIXME: CODE ME
+        // SFD is 1010_1011
+
+        if (!txn_ddr) begin
+          nibble <= ~nibble;
+          if (nibble) begin
+            // Send our second half and move to sending data
+            state <= S_DATA;
+            tx_data_h <= 4'b1011;
+            tx_data_l <= 4'b1011; // Same on both sides, not DDR
+          end else begin
+            tx_data_h <= 4'b1010;
+            tx_data_l <= 4'b1010; // Same on both sides, not DDR
+          end
+        end // !ddr
+
+        // FIXME: CODE txn_ddr
       end
 
       S_DATA: begin ////////////////////////////////////////////////////
+        // We are going to send the data of an ARP request
         state <= S_FCS;
         // FIXME: CODE ME
       end
 
       S_FCS: begin ////////////////////////////////////////////////////
+        // We are going to send a fixed CRC value for FCS
         state <= S_IDLE;
         busy <= '0;
         // FIXME: CODE ME
