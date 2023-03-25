@@ -56,8 +56,24 @@ added by HSMC card. Some useful features:
 # Current Functionality
 
 * Management Interface
-  * Tested on real PHY - see bugs below
   * Visually simulated in Questa
+  * Tested on real PHY
+
+## Next Steps
+
+* Management state machine
+  * Queries MDIO for state periodically
+  * Exports state flags based on the state read
+    * Link up & ready
+    * Speed
+    * Duplex
+  * Could handle interrupts
+* Simple RGMII TX interface
+  * Handle all 3 speeds
+* Simple RGMII RX interface
+  * Handle all 3 speeds
+* Simple CRC creator/checker added to TX/RX
+* DMA based RX/TX interface
 
 ## User Interface
 
@@ -164,6 +180,12 @@ Docs:
 * https://prodigytechno.com/mdio-management-data-input-output/
 * https://medium.com/@Frank_pan/how-to-use-ethernet-components-in-fpga-altera-de2-115-26659da06362
 * https://en.wikipedia.org/wiki/Media-independent_interface#cite_note-802.3-2
+* RGMII:
+  * https://www.renesas.com/us/en/document/apn/guide-using-rgmii-making-ethernet-if-connection
+  * [AN 477: Designing RGMII Interfaces with FPGAs and HardCopy 
+     ASICs](https://cdrdv2-public.intel.com/654563/an477.pdf)
+  * [Intel Triple-Speed Ethernet](https://www.intel.com/content/www/us/en/docs/programmable/683402/22-4-21-1-0/about-this-ip.html)
+  * [RGMII Timing for EthernetFMC](https://ethernetfmc.com/docs/user-guide/rgmii-timing/)
 
 Linux to keep FCS & bad CRCs
 * https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
