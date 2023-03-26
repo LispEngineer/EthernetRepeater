@@ -487,6 +487,37 @@ ddr_output_1 ddr_output1_rgmii1_tx_ctl (
 	.dataout(ENET1_TX_EN)
 );
 
+// Transmit when KEY[1] is pushed.
+// Note: "Each push-button switch provides a high logic level when it is not pressed,
+//        and provides a low logic level when depressed."
+logic [3:0] last_key_tx = '1;
+logic last_send_busy = '0;
+
+always_ff @(posedge CLOCK_50) begin
+  last_key_tx <= KEY;
+  last_send_busy <= send_busy;
+
+  // TODO: Handle reset
+
+  if (!send_busy && last_send_busy) begin
+    // We need to handle the completion of a send.
+    // Nothing really to do
+
+  end else if (send_busy && send_activate) begin
+    // Transmit just started
+    send_activate <= '0;
+  end else if (send_busy) begin
+    // The transmitter is busy, nothing to do
+  end else if (send_activate) begin
+    // Do nothing
+  end else if (!send_busy && !send_activate && !KEY[1] && KEY[1] != last_key[1]) begin
+    // We're not busy, not awaiting activation, and the key was just pressed
+    // (remember key down reports logic 0)
+    send_activate <= '1;
+  end
+
+end
+
 
 
 
