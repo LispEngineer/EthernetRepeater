@@ -291,7 +291,7 @@ This is an ARP ethernet Frame
     08 06 - ARP (type/len)
     FROM HERE IS ARP
     00 01 - Ethernet
-    00 00 - IPv4 ARP
+    00 00 - IPv4 ARP (not 00 00, this is wrong, fixed in the code)
     06 - hardware size
     04 - protocol size
     00 01 - opcode - request
