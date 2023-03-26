@@ -15,7 +15,6 @@
 // This module is usually in its own clock domain (tx_clk).
 // This module outputs data and clock completely aligned.
 // If the `gtx_clk` needs to be skewed, it has to happen outside of here.
-// In non-DDR mode, we transmit the low nibble first!
 
 // Our fixed send data, for now
 module data_packet (
@@ -279,29 +278,29 @@ always_ff @(posedge tx_clk) begin
       end
 
       S_DATA: begin ////////////////////////////////////////////////////
-        // We are going to send the data of an ARP request
+        // We are going to send the data of an ARP request, "current_data"
 
         if (!txn_ddr) begin
 
-          // Send a test pattern:
-          // 1100_0011 0101_1010 == C3 5A
-          // We can do this since we know we can receive invalid-CRC frames
-          case ({count[0], nibble})
-            2'b00: begin d_h <= 4'b1100; d_l <= 4'b1100; end // C
-            2'b01: begin d_h <= 4'b0011; d_l <= 4'b0011; end // 3
-            2'b10: begin d_h <= 4'b0101; d_l <= 4'b0101; end // 5
-            2'b11: begin d_h <= 4'b1010; d_l <= 4'b1010; end // A
-          endcase
+          // Send our data
+          if (!nibble) begin
+            d_h <= current_data[7:4];
+            d_l <= current_data[7:4];
+          end else begin
+            d_h <= current_data[3:0];
+            d_l <= current_data[3:0];
+          end
 
           // Handle advancing state
           nibble <= ~nibble;
           if (nibble) begin
-            // Second half of our byte - higher part
+            // Second half of our byte
             count <= count + 1'd1;
             // FIXME: For now we send CRC as part of data
             if (count == LAST_CRC_BYTE) begin
               state <= S_IDLE;
               // Let's stay busy until we're IN the idle state
+              // Let's keep tx_en until we're IN the idle state
             end
           end
         end
