@@ -24,19 +24,22 @@ module data_packet (
 
 always_comb
   case (addr)
-  6'd0: val = 8'hff;
-  6'd1: val = 8'hff;
-  6'd2: val = 8'hff;
-  6'd3: val = 8'hff;
-  6'd4: val = 8'hff;
-  6'd5: val = 8'hff;
-  6'd6: val = 8'h06;
-  6'd7: val = 8'he0;
-  6'd8: val = 8'h4c;
-  6'd9: val = 8'hDF;
-  6'd10: val = 8'hDF;
-  6'd11: val = 8'hDF;
-  6'd12: val = 8'h08;
+  6'd0:  val = 8'hff; // Dest addres
+  6'd1:  val = 8'hff;
+  6'd2:  val = 8'hff;
+  6'd3:  val = 8'hff;
+  6'd4:  val = 8'hff;
+  6'd5:  val = 8'hff;
+                      // Looks like both the nibbles are flipped and the
+                      // bit order is flipped... ARGH
+                      // Rcv'd
+  6'd6:  val = 8'h06; // 60    0000 0110 -> 0110 0000 // Source address 
+  6'd7:  val = 8'he0; // 07    1110 0000 -> 0000 0111
+  6'd8:  val = 8'h4c; // 32    0100 1100 -> 0011 0010
+  6'd9:  val = 8'hDF; // fb    1101 1111 -> 1111 1011
+  6'd10: val = 8'hDF; // fb
+  6'd11: val = 8'hDF; // fb
+  6'd12: val = 8'h08; // Packet type (ARP)
   6'd13: val = 8'h06;
   6'd14: val = 8'h00;
   6'd15: val = 8'h01;
@@ -82,10 +85,10 @@ always_comb
   6'd55: val = 8'h00;
   6'd56: val = 8'h00;
   6'd57: val = 8'h00;
-  6'd58: val = 8'h75; // CRC
-  6'd59: val = 8'h0B;
-  6'd60: val = 8'h4B;
-  6'd61: val = 8'h43;
+  6'd58: val = 8'h75; // ae 0111 0011 -> 1010 1110    // CRC
+  6'd59: val = 8'h0B; // d0 0000 1011 -> 1101 0000
+  6'd60: val = 8'h4B; // d2 0100 1011 -> 1101 0010
+  6'd61: val = 8'h43; // c2
   default: val = 8'hff;
   endcase
 
