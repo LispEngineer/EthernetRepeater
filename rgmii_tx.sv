@@ -40,7 +40,7 @@ always_comb
   6'd13: val = 8'h06;
   6'd14: val = 8'h00; // ARP START - ARP Hardware Type
   6'd15: val = 8'h01;
-  6'd16: val = 8'h00; // Protocol unknown - IPv4 would be 0x0800
+  6'd16: val = 8'h08; // Protocol - IPv4
   6'd17: val = 8'h00;
   6'd18: val = 8'h06; // Hardware size: 6
   6'd19: val = 8'h04; // Protocol size: 4
@@ -85,12 +85,11 @@ always_comb
 
   // CRC for this packet can be calculated here:
   // https://crccalc.com/?crc=ff+ff+ff+ff+ff+ff++06+e0+4c+DF+DF+DF++08+06++00+01++00+00++06++04++00+01++06+e0+4c+DF+DF+DF++10+20+DF+DF++00+00+00+00+00+00++ff+ff+ff+ff++00+00+00+00+00+00+00+00+00+00+00+00+00+00+00+00&method=crc32&datatype=hex&outtype=0
-  // Result: 0x750b4b43 (shown as CRC-32)
   // This needs to be sent LSByte (least significant byte) first
-  6'd58: val = 8'h43;
-  6'd59: val = 8'h4B;
-  6'd60: val = 8'h0B;
-  6'd61: val = 8'h75;
+  6'd58: val = 8'hF4;
+  6'd59: val = 8'h7F;
+  6'd60: val = 8'h90;
+  6'd61: val = 8'h7C;
 
   default: val = 8'hff;
   endcase
