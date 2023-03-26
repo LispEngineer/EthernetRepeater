@@ -10,6 +10,11 @@ create_clock -period 20.000ns [get_ports CLOCK_50]
 create_clock -period 20.000ns [get_ports CLOCK2_50]
 create_clock -period 20.000ns [get_ports CLOCK3_50]
 
+# This is for 10BASE-T only (2.5MHz clock).
+# I have no idea how to say its period can change, and become
+# 2.5, 25 or 125 MHz.
+create_clock -period 400.000ns [get_ports ENET1_RX_CLK]
+
 #**************************************************************
 # Create Generated Clock
 #**************************************************************

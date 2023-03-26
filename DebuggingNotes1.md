@@ -91,3 +91,14 @@ The problem is the PLL won't lock below 5MHz! Oy.
 
 I used a 5MHz 90⁰ phase shift PLL, which shows locked, but it didn't help.
 The received data is identical (and still very wrong).
+(And it doesn't lock on the 25MHz.)
+* I also specified a clock constraint:
+  * `create_clock -period 400.000ns [get_ports ENET1_RX_CLK]`
+  * This creates a lot of (Correct) warnings:
+    * Warning (332056): PLL cross checking found inconsistent PLL clock settings:
+    * Warning (332056): Clock: pll_5mhz_90_inst|altpll_component|auto_generated|pll1|clk[0] with master clock period: 400.000 found on PLL node: pll_5mhz_90_inst|altpll_component|auto_generated|pll1|clk[0] does not match the master clock period requirement: 200.000
+
+
+Using `Assignment Editor` I changed `ENET1_RX_CLK` from `I/O Standard` to `Global Signal`
+and `2.5V` to `Global Clock`.
+* Fitter -> Resource Section -> Resource Usage Summary shows clocks used
