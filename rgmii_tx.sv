@@ -38,35 +38,35 @@ always_comb
   6'd11: val = 8'hDF;
   6'd12: val = 8'h08; // Packet type (ARP)
   6'd13: val = 8'h06;
-  6'd14: val = 8'h00;
+  6'd14: val = 8'h00; // ARP START - ARP Hardware Type
   6'd15: val = 8'h01;
-  6'd16: val = 8'h00;
+  6'd16: val = 8'h00; // Protocol unknown - IPv4 would be 0x0800
   6'd17: val = 8'h00;
-  6'd18: val = 8'h06;
-  6'd19: val = 8'h04;
-  6'd20: val = 8'h00;
+  6'd18: val = 8'h06; // Hardware size: 6
+  6'd19: val = 8'h04; // Protocol size: 4
+  6'd20: val = 8'h00; // Opcode: 0x0001 (Request)
   6'd21: val = 8'h01;
-  6'd22: val = 8'h06;
+  6'd22: val = 8'h06; // Sender MAC (made up)
   6'd23: val = 8'he0;
   6'd24: val = 8'h4c;
   6'd25: val = 8'hDF;
   6'd26: val = 8'hDF;
   6'd27: val = 8'hDF;
-  6'd28: val = 8'h10;
+  6'd28: val = 8'h10; // Sender IP (Made up)
   6'd29: val = 8'h20;
   6'd30: val = 8'hDF;
   6'd31: val = 8'hDF;
-  6'd32: val = 8'h00;
+  6'd32: val = 8'h00; // Target MAC (anyone)
   6'd33: val = 8'h00;
   6'd34: val = 8'h00;
   6'd35: val = 8'h00;
   6'd36: val = 8'h00;
   6'd37: val = 8'h00;
-  6'd38: val = 8'hff;
+  6'd38: val = 8'hff; // Target IP (anyone)
   6'd39: val = 8'hff;
   6'd40: val = 8'hff;
   6'd41: val = 8'hff;
-  6'd42: val = 8'h00;
+  6'd42: val = 8'h00; // (Trailer begin)
   6'd43: val = 8'h00;
   6'd44: val = 8'h00;
   6'd45: val = 8'h00;
@@ -239,6 +239,9 @@ always_ff @(posedge tx_clk) begin
           d_h <= 4'b0101;
           d_l <= 4'b0101;
           count <= count + 1'd1;
+          // No matter what I use for this count (12, 13, 14, 18, 123)
+          // it seems to accept the packet on the other end, with a
+          // length error.
           if (count == 13) begin
             // We are sending our 7th byte, second nibble, move on to SFP
             state <= S_SFD;

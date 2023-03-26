@@ -109,6 +109,9 @@ added by HSMC card. Some useful features:
   counter increased, but without a CRC error. Is the preamble length wrong?
   It shows up in `kern.log` and `dmesg` as:
   `Mar 26 14:00:05 P3L kernel: [90913.305607] r8169 0000:af:00.0 enp175s0: Rx ERROR. status = 3231c03e`
+  * `ifconfig` "RX error frame" goes up
+  * `/sys/class/net/enp175s0/statistics/rx_length_errors` goes up
+  * This seems to happen if I send 12, 13, 14, 18 or 123 nibbles of preamble
   * Shows up as a Realtek RTL8125 2.5GbE Controller in `lspci`
   * Reading the Linux RTL8125 driver, this seems to mean it's a RUNT or RWT
     * Not sure what RWT is, but it might be "Receive Watchdog Timeout" (referenced in
