@@ -106,10 +106,12 @@ added by HSMC card. Some useful features:
 ## Known Bugs
 
 * The sent packet shows up in the receiving side with an rx_length_error
-  counter increased, but without a CRC error. Is the preamble length wrong?
+  counter increased, but without a CRC error. 
+  (10BASE-T forced by other side during auto-negotation, using fixed 2.5MHz clock.)
+  Is the preamble length wrong?
   It shows up in `kern.log` and `dmesg` as:
   `Mar 26 14:00:05 P3L kernel: [90913.305607] r8169 0000:af:00.0 enp175s0: Rx ERROR. status = 3231c03e`
-  * `ifconfig` "RX error frame" goes up
+  * `ifconfig` "RX error: frame" goes up
   * `/sys/class/net/enp175s0/statistics/rx_length_errors` goes up
   * This seems to happen if I send 12, 13, 14, 18 or 123 nibbles of preamble
   * Shows up as a Realtek RTL8125 2.5GbE Controller in `lspci`
@@ -117,7 +119,8 @@ added by HSMC card. Some useful features:
     * Not sure what RWT is, but it might be "Receive Watchdog Timeout" (referenced in
       an Intel Cyclone V HPS EMAC Technical Reference Manual)
     * A Microchip LAN7801 says RWT was because a frame longer than 11,264 was received.
-  * This bug occurs with `GTX_CLK` set to either `clock_2p5_12ns` and `clock_2p5_90deg`
+  * This bug occurs with `GTX_CLK` set to either `clock_2p5_12ns` and `clock_2p5_90deg`.
+    It even occurs with the 
   * Monitor counts with:
 
           clear ; while /bin/true ; do echo -e -n '\E[45A' ; for i in `ls /sys/class/net/enp175s0/statistics/ | fgrep -v txxxx_` ; do echo $i `cat /sys/class/net/enp175s0/statistics/$i` ; done ; echo ; ifconfig enp175s0 ; sleep 1 ; done
