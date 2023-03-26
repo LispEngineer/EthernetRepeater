@@ -186,6 +186,7 @@ always_ff @(posedge tx_clk) begin
     tx_en <= '0;
     tx_err <= '0;
     state <= S_IDLE;
+    busy <= '1; // Should we be "busy" during reset? Sure, why not. Confirm!
   
   end else begin ///////////////////////////////////////////////////////
 
@@ -319,35 +320,33 @@ always_ff @(posedge tx_clk) begin
         // We are going to send the data of an ARP request
 
         if (!txn_ddr) begin
+
+          // Send a test pattern:
+          // 1100_0011 0101_1010 == C3 5A
+          // We can do this since we know we can receive invalid-CRC frames
+          // TEST RESULTS:
+          // Received: E5 29 == 1110_0101 0010_1001 (repeating)
+          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
+          // Received:             1110010100101001 (no match - no string of 3 1s)
+          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
+          // Received nibble rev:  0101111010010010 (no match)
+          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
+          // Received rev:         1001010010100111 (no match)
+          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
+          // Received inv:            0001101011010110 (match!!!) weird
+          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
+          // Received inv nib rev: 1010000101101101 (no match)
+          case ({count[0], nibble})
+            2'b00: begin tx_data_h <= 4'b1100; tx_data_l <= 4'b1100; end // C
+            2'b01: begin tx_data_h <= 4'b0011; tx_data_l <= 4'b0011; end // 3
+            2'b10: begin tx_data_h <= 4'b0101; tx_data_l <= 4'b0101; end // 5
+            2'b11: begin tx_data_h <= 4'b1010; tx_data_l <= 4'b1010; end // A
+          endcase
+
+          // Handle advancing state
           nibble <= ~nibble;
-          if (!nibble) begin
-            // First half of our byte - lower part
-`ifdef FLIP_BITS
-            tx_data_h <= {current_data[0], current_data[1], current_data[2], current_data[3]};
-            tx_data_l <= {current_data[0], current_data[1], current_data[2], current_data[3]};
-`else
-`ifdef LOW_NIBBLE_FIRST           
-            tx_data_h <= current_data[3:0];
-            tx_data_l <= current_data[3:0];
-`else            
-            tx_data_h <= current_data[7:4];
-            tx_data_l <= current_data[7:4];
-`endif
-`endif
-          end else begin
+          if (nibble) begin
             // Second half of our byte - higher part
-`ifdef FLIP_BITS
-            tx_data_h <= {current_data[4], current_data[5], current_data[6], current_data[7]};
-            tx_data_l <= {current_data[4], current_data[5], current_data[6], current_data[7]};
-`else
-`ifdef LOW_NIBBLE_FIRST           
-            tx_data_h <= current_data[7:4];
-            tx_data_l <= current_data[7:4];
-`else
-            tx_data_h <= current_data[3:0];
-            tx_data_l <= current_data[3:0];
-`endif
-`endif
             count <= count + 1'd1;
             // FIXME: For now we send CRC as part of data
             if (count == LAST_CRC_BYTE) begin
