@@ -19,14 +19,18 @@ Convert a file of hex bytes (with possible leading spaces) into a ROM:
 ## 10BASE-T (2.5MHz) RGMII mode
 
 * Send one nibble each cycle (not two) - same on H and L of clock
-* First nibble (of each byte) sent should be the high nibble, bits 7:4
-  * Followed by the low nibble, bits 3:0
-* The `tx_data_h`/`_l` signals have their bits reversed compared to
-  the original data nibbles.
-  * I cannot find this documented clearly or perfectly anywhere.
-    The 802.3-2022 has section 22.2.3 with Figure 22-13, but that
+* For Preamble & SFD:
+  * Send the exact data as shown in 802.3-2022 Table 22-3on TXD[0:3]
+  * This is erversed from the bit sequence
+* For data, send the lower nibble first, with the txd bits in same order as data bits
+* Overall, this is not documented clearly or perfectly anywhere.
+  * Specifically, it seems the order of TXD bits is opposite in preamble/SFD
+    vs. the rest of the data packet.
+  * The 802.3-2022 has section 22.2.3 with Figure 22-13, but that
     is confusing. Table 22-3 tries to help. Why not just say it clearly
     in plain English?
+* Reduced Gigabit Media Independent Interface (RGMII) Version 2.0 4/1/2022
+  is not helpful either. (Broadcom, HP, Marvell)
 
 # Code Notes
 

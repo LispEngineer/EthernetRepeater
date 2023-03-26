@@ -58,6 +58,9 @@ added by HSMC card. Some useful features:
 * Management Interface
   * Visually simulated in Questa
   * Tested on real PHY
+* RGMII Transmit Capability at 10BASE-T speeds
+  * Sends a fixed packet with pre-calculated CRC
+  * Uses internally generate 2.5MHz clock & 12ns delay on transmitted GTX clock
 
 ## Next Steps
 
@@ -68,6 +71,7 @@ added by HSMC card. Some useful features:
     * Speed
     * Duplex
   * Could handle interrupts
+  * Handle changing transmit speed as receive speed changes
 
 * Simple RGMII TX interface
   * Set the use of clocks for the RX_CLK and GTX_CLK
@@ -87,9 +91,11 @@ added by HSMC card. Some useful features:
 * Red LEDs 15-0: Data read from registers
 * Green LED 8: Heartbeat
 * Green LEDs 5-0: Status (see code)
+* Green LED 7: PLL Lock status
 * KEY 3: Reset Ethernet PHY (only)
 * SW 4-0: Register address
 * KEY 0: Read from register in SW 4-0
+* KEY 1: Send fixed ARP packet
 
 
 ## Open Questions
@@ -99,7 +105,16 @@ added by HSMC card. Some useful features:
 
 ## Known Bugs
 
-* Sometimes I have to send the request a few times to get it to respond
+* The sent packet shows up in the receiving side with an rx_length_error
+  counter increased, but without a CRC error. Is the preamble length wrong?
+  It shows up in `kern.log` and `dmesg` as:
+  `Mar 26 14:00:05 P3L kernel: [90913.305607] r8169 0000:af:00.0 enp175s0: Rx ERROR. status = 3231c03e`
+  * Shows up as a Realtek RTL8125 2.5GbE Controller in `lspci`
+  * Monitor counts with:
+  
+          clear ; while /bin/true ; do echo -e -n '\E[45A' ; for i in `ls /sys/class/net/enp175s0/statistics/ | fgrep -v txxxx_` ; do echo $i `cat /sys/class/net/enp175s0/statistics/$i` ; done ; echo ; ifconfig enp175s0 ; sleep 1 ; done
+
+* Sometimes I have to send the MDIO request a few times to get it to respond
   differently
 
 ### Fixed Bugs
@@ -216,6 +231,15 @@ won't work.
   * `eth.type != 0x86dd && eth.type != 0x0800` - remove all IPv6 and IPv4 packets
     * (Generally leaves just ARP and invalid stuff)
 
+* Wireshark Ethernet options
+  * Assume packets have FCS: Always
+  * Validate the Ethernet checksum if possible
+  * NOTE: receive packets include the FCS, but sent packets do NOT, so doing this will
+    find FCS/checksum errors in all SENT packets
+
+
+
+
 # Notes on Test Harness
 
 Ensure Quartus Settings -> Simulation shows `Questa Intel FPGA`
@@ -246,6 +270,9 @@ Setting up Quartus to load the Test Harness in Questa
 ## SignalTap
 
 * To disable SignalTap again, go to Assignments -> Settings -> SignalTap and unclick Enable
+
+
+
 
 
 # Example Ethernet Frame
@@ -282,7 +309,7 @@ This is an ARP ethernet Frame
     ff ff ff ff
     00 00 00 00 00 00 00 00
     00 00 00 00 00 00 00 00
-    75 0B 4B 43 (or maybe it's the other way around)
+    43 4B 0B 75 (checksum is sent least significant byte first)
 
 * CRC = `0x750B4B43`
 * [Online CRC Calculator](https://crccalc.com/?crc=ff+ff+ff+ff+ff+ff++06+e0+4c+DF+DF+DF++08+06++00+01++00+00++06++04++00+01++06+e0+4c+DF+DF+DF++10+20+DF+DF++00+00+00+00+00+00++ff+ff+ff+ff++00+00+00+00+00+00+00+00+00+00+00+00+00+00+00+00&method=crc32&datatype=hex&outtype=0)
@@ -294,6 +321,11 @@ This is an ARP ethernet Frame
 * [CRC Algorithms](https://reveng.sourceforge.io/crc-catalogue/17plus.htm#crc.cat-bits.32/) - see CRC-32/ISO-HDLC
 * [CRC Verilog Language Generator](https://bues.ch/cms/hacking/crcgen)
 * [Another one](http://www.sunshine2k.de/coding/javascript/crc/crc_js.html)
+
+
+
+
+
 
 # DE2-115 and Marvel 88E1111
 

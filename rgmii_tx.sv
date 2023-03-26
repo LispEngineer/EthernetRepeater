@@ -30,15 +30,12 @@ always_comb
   6'd3:  val = 8'hff;
   6'd4:  val = 8'hff;
   6'd5:  val = 8'hff;
-                      // Looks like both the nibbles are flipped and the
-                      // bit order is flipped... ARGH
-                      // Rcv'd
-  6'd6:  val = 8'h06; // 60    0000 0110 -> 0110 0000 // Source address 
-  6'd7:  val = 8'he0; // 07    1110 0000 -> 0000 0111
-  6'd8:  val = 8'h4c; // 32    0100 1100 -> 0011 0010
-  6'd9:  val = 8'hDF; // fb    1101 1111 -> 1111 1011
-  6'd10: val = 8'hDF; // fb
-  6'd11: val = 8'hDF; // fb
+  6'd6:  val = 8'h06; // Source address 
+  6'd7:  val = 8'he0;
+  6'd8:  val = 8'h4c;
+  6'd9:  val = 8'hDF;
+  6'd10: val = 8'hDF;
+  6'd11: val = 8'hDF;
   6'd12: val = 8'h08; // Packet type (ARP)
   6'd13: val = 8'h06;
   6'd14: val = 8'h00;
@@ -85,10 +82,16 @@ always_comb
   6'd55: val = 8'h00;
   6'd56: val = 8'h00;
   6'd57: val = 8'h00;
-  6'd58: val = 8'h75; // ae 0111 0011 -> 1010 1110    // CRC
-  6'd59: val = 8'h0B; // d0 0000 1011 -> 1101 0000
-  6'd60: val = 8'h4B; // d2 0100 1011 -> 1101 0010
-  6'd61: val = 8'h43; // c2
+
+  // CRC for this packet can be calculated here:
+  // https://crccalc.com/?crc=ff+ff+ff+ff+ff+ff++06+e0+4c+DF+DF+DF++08+06++00+01++00+00++06++04++00+01++06+e0+4c+DF+DF+DF++10+20+DF+DF++00+00+00+00+00+00++ff+ff+ff+ff++00+00+00+00+00+00+00+00+00+00+00+00+00+00+00+00&method=crc32&datatype=hex&outtype=0
+  // Result: 0x750b4b43 (shown as CRC-32)
+  // This needs to be sent LSByte (least significant byte) first
+  6'd58: val = 8'h43;
+  6'd59: val = 8'h4B;
+  6'd60: val = 8'h0B;
+  6'd61: val = 8'h75;
+
   default: val = 8'hff;
   endcase
 
@@ -143,7 +146,8 @@ logic nibble; // 0 = low nibble, 1 = high nibble
 // Which byte we are sending - max packet is about 2000 so use 11 bits
 logic [10:0] count;
 
-// Bytes sent for the Preamble and the SFD in the Ethernet frame
+// Bytes sent for the Preamble and the SFD in the Ethernet frame.
+// Note that we don't use these; we send the nibbles directly.
 localparam BYTES_PREAMBLE = 8'b1010_1010;
 localparam BYTES_SFD      = 8'b1010_1011;
 
@@ -177,17 +181,8 @@ always_comb begin
   real_activate = syncd_activate[SYNC_LEN - 1];
   real_ddr_tx = syncd_ddr_tx[SYNC_LEN - 1];
 
-  // Per 802.3-2022, the nibble bits are flipped
-  // as compared to the actual nibbles, as they
-  // seem to be transmited LSB first.
-  tx_data_h[0] = d_h[3];
-  tx_data_h[1] = d_h[2];
-  tx_data_h[2] = d_h[1];
-  tx_data_h[3] = d_h[0];
-  tx_data_l[0] = d_l[3];
-  tx_data_l[1] = d_l[2];
-  tx_data_l[2] = d_l[1];
-  tx_data_l[3] = d_l[0];
+  tx_data_h = d_h;
+  tx_data_l = d_l;
 end
 
 // Synchronizer
@@ -238,22 +233,16 @@ always_ff @(posedge tx_clk) begin
         tx_err <= '0; // Not sure when we would ever set this
 
         if (!txn_ddr) begin
-
-          // We always transmit the high nibble first.
-          // Review Table 22-3 in 802.3-2022
-
-          nibble <= ~nibble;
-          if (nibble) begin
-            count <= count + 1'd1;
-            if (count == 6) begin
-              // We are sending our 7th byte, second nibble, move on to SFP
-              state <= S_SFD;
-            end
-            d_h <= BYTES_PREAMBLE[3:0];
-            d_l <= BYTES_PREAMBLE[3:0];
-          end else begin 
-            d_h <= BYTES_PREAMBLE[7:4];
-            d_l <= BYTES_PREAMBLE[7:4];
+          // Review Table 22-3 in 802.3-2022 for MII (same as RGMII with 4 tx pins)
+          // Preamble is txd[0] = 1, txd[1] = 0, txd[2] = 1, txd[3] = 0
+          // for 14 nibbles
+          d_h <= 4'b0101;
+          d_l <= 4'b0101;
+          count <= count + 1'd1;
+          if (count == 13) begin
+            // We are sending our 7th byte, second nibble, move on to SFP
+            state <= S_SFD;
+            nibble <= NIBBLE_LOW;
           end
         end // !ddr
         // FIXME: CODE txn_ddr
@@ -261,19 +250,22 @@ always_ff @(posedge tx_clk) begin
       end
 
       S_SFD: begin ////////////////////////////////////////////////////
-        // SFD is 1010_1011
-
+ 
         if (!txn_ddr) begin
+          // Review Table 22-3 in 802.3-2022
+          // SFD is txd[0] = 1, txd[1] = 0, txd[2] = 1, txd[3] = 0
+          // then   txd[0] = 1, txd[1] = 0, txd[2] = 1, txd[3] = 1
           nibble <= ~nibble;
-          if (nibble) begin
-            // Send our second half and move to sending data
+          if (!nibble) begin
+            // First nibble is same as preamble
+            d_h <= 4'b0101;
+            d_l <= 4'b0101;
+          end else begin
+            // Second nibble has an extra bit
+            d_h <= 4'b1101;
+            d_l <= 4'b1101;
             state <= S_DATA;
             count <= '0;
-            d_h <= BYTES_SFD[3:0];
-            d_l <= BYTES_SFD[3:0];
-          end else begin
-            d_h <= BYTES_SFD[7:4];
-            d_l <= BYTES_SFD[7:4];
           end
         end // !ddr
 
@@ -287,11 +279,11 @@ always_ff @(posedge tx_clk) begin
 
           // Send our data
           if (nibble) begin
-            d_h <= { current_data[4], current_data[5], current_data[6], current_data[7] };
-            d_l <= { current_data[4], current_data[5], current_data[6], current_data[7] };
+            d_h <= current_data[7:4];
+            d_l <= current_data[7:4];
           end else begin
-            d_h <= { current_data[0], current_data[1], current_data[2], current_data[3] };
-            d_l <= { current_data[0], current_data[1], current_data[2], current_data[3] };
+            d_h <= current_data[3:0];
+            d_l <= current_data[3:0];
           end
 
           // Handle advancing state
