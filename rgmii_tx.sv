@@ -16,7 +16,8 @@
 // This module outputs data and clock completely aligned.
 // If the `gtx_clk` needs to be skewed, it has to happen outside of here.
 
-// Our fixed send data, for now
+// Our fixed send data, for now,
+// a full 64 bytes long
 module data_packet (
   input  logic [5:0] addr,
   output logic [7:0] val
@@ -82,21 +83,23 @@ always_comb
   6'd55: val = 8'h00;
   6'd56: val = 8'h00;
   6'd57: val = 8'h00;
+  6'd58: val = 8'h00;
+  6'd59: val = 8'h00;
 
   // CRC for this packet can be calculated here:
   // https://crccalc.com/?crc=ff+ff+ff+ff+ff+ff++06+e0+4c+DF+DF+DF++08+06++00+01++00+00++06++04++00+01++06+e0+4c+DF+DF+DF++10+20+DF+DF++00+00+00+00+00+00++ff+ff+ff+ff++00+00+00+00+00+00+00+00+00+00+00+00+00+00+00+00&method=crc32&datatype=hex&outtype=0
   // This needs to be sent LSByte (least significant byte) first
-  6'd58: val = 8'hF4;
-  6'd59: val = 8'h7F;
-  6'd60: val = 8'h90;
-  6'd61: val = 8'h7C;
+  6'd60: val = 8'h7B;
+  6'd61: val = 8'h26;
+  6'd62: val = 8'hB3;
+  6'd63: val = 8'hF1;
 
   default: val = 8'hff;
   endcase
 
 endmodule // data_packet
-localparam LAST_DATA_BYTE = 6'd57; // plus 4 for CRC
-localparam LAST_CRC_BYTE = 6'd61;
+localparam LAST_DATA_BYTE = 6'd59; // plus 4 for CRC
+localparam LAST_CRC_BYTE = 6'd63;
 
 module rgmii_tx /* #(
   // No parameters, yet

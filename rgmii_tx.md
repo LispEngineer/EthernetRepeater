@@ -31,9 +31,8 @@ Convert a file of hex bytes (with possible leading spaces) into a ROM:
     in plain English?
 * Reduced Gigabit Media Independent Interface (RGMII) Version 2.0 4/1/2022
   is not helpful either. (Broadcom, HP, Marvell)
+* The Ethernet Frame minimum size of 64 bytes does NOT include the preamble
+  or SFD, but it DOES include the FCS (checksum). So short packets like ARP
+  need to have plenty of extra padding.
 
 # Code Notes
-
-* `FLIP_BITS` macro, if defined, will send the bits in each nibble out in backwards order
-  from how they are in tx_data.
-  * Not yet sure which one is correct
