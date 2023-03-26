@@ -368,12 +368,6 @@ always_comb begin
   ENET1_RST_N = KEY[3]; // Take chip out of reset (with logical 1)
   // ENET1_MDIO = mdio;
 
-  ENET1_TX_DATA = '0;
-  ENET1_GTX_CLK = '0;
-  ENET1_TX_EN = '0;
-  ENET1_TX_ER = '0;
-
-
   // Show the results
   LEDR[15:0] = mi_data_in;
   LEDG[0] = mi_busy;
@@ -449,6 +443,50 @@ always_ff @(posedge CLOCK_50) begin
   end
 
 end
+
+
+
+// ETHERNET TRANSMITTER TOP LEVEL /////////////////////////////////////////////
+
+logic [3:0] tx_data_h, tx_data_l;
+logic tx_ctl_h, tx_ctl_l;
+logic gtx_clk;
+logic send_activate = '0;
+logic send_busy;
+
+rgmii_tx rgmii_tx1 (
+  .tx_clk(ENET1_RX_CLK),
+  .reset('0),
+  .ddr_tx('0),
+
+  .activate(send_activate),
+  .busy(send_busy),
+
+  .gtx_clk(gtx_clk),
+  .tx_data_h(tx_data_h),
+  .tx_data_l(tx_data_l),
+  .tx_ctl_h(tx_ctl_h),
+  .tx_ctl_l(tx_ctl_l)
+);
+
+assign ENET1_TX_ER = '0;
+assign ENET1_GTX_CLK = gtx_clk;
+
+// TODO: SET UP DDR OUTPUT PINS
+ddr_output_4 ddr_output4_rgmii1_tx_data (
+	.datain_h(tx_data_h),
+	.datain_l(tx_data_l),
+	.outclock(gtx_clk),
+	.dataout (ENET1_TX_DATA)
+);
+
+ddr_output_1 ddr_output1_rgmii1_tx_ctl (
+	.datain_h(tx_ctl_h),
+	.datain_l(tx_ctl_l),
+	.outclock(gtx_clk),
+	.dataout(ENET1_TX_EN)
+);
+
 
 
 

@@ -156,16 +156,35 @@ won't work.
     * [source](https://isc.sans.edu/diary/Not+all+Ethernet+NICs+are+Created+Equal+Trying+to+Capture+Invalid+Ethernet+Frames/25896)
   * `ethtool -k _device_` shows all device capabilities
   * `ethtool -s enp175s0 autoneg on speed 10 duplex full` forces 10BASE-T full duplex
+  * `ethtool -S enp175s0` shows some statistics
+  * `ethtool --register-dump _device_` shows a bunch of hex values
 
 * `ip`
   * `ip link show enp175s0` - shows status of that link
   * `ip link set _device_ promisc on` - turn on promiscuous mode
+  * `ip -s link` to see summary statistics
+  * `ip -stats link show enp175s0` shows them for that specific device
 
 * `ifconfig`
   * `ifconfig _device_ promisc` - turn on promiscuous mode
 
 * `arping`
   * `arping -t enp175s0 -S 10.10.10.10 -B` - force an ARP packet out that interface with this made up IP address
+
+* `nstat`
+* `ss`
+* `netstat`
+  * `netstat -s`
+
+* `sysfs`
+  * `ls /sys/class/net/enp175s0/statistics/` shows all available statistics
+
+* Little monitor I cooked up:
+
+    clear ; while /bin/true ; do echo -e -n '\E[25A' ; for i in `ls /sys/class/net/enp175s0/statistics/ | fgrep -v txxxx_` ; do echo $i `cat /sys/class/net/enp175s0/statistics/$i` ; done ; sleep 1 ; done`
+
+* Docs
+  * [Kernel Network Statistics](https://docs.kernel.org/networking/statistics.html)
 
 
 ## Wireshark
