@@ -160,7 +160,7 @@ logic tx_err;
 logic [7:0] current_data;
 
 data_packet data_packet (
-  .addr(count),
+  .addr(count[6:0]),
   .val(current_data)
 );
 
@@ -246,8 +246,13 @@ always_ff @(posedge tx_clk) begin
             tx_data_l <= {BYTES_PREAMBLE[4], BYTES_PREAMBLE[5], BYTES_PREAMBLE[6], BYTES_PREAMBLE[7]};
 `else
             // Send MSB first (in the tx_data_h[3])
+`ifdef LOW_NIBBLE_FIRST            
             tx_data_h <= BYTES_PREAMBLE[7:4];
             tx_data_l <= BYTES_PREAMBLE[7:4];
+`else
+            tx_data_h <= BYTES_PREAMBLE[3:0];
+            tx_data_l <= BYTES_PREAMBLE[3:0];
+`endif            
 `endif            
           end else begin 
 `ifdef FLIP_BITS
@@ -256,8 +261,13 @@ always_ff @(posedge tx_clk) begin
             tx_data_l <= {BYTES_PREAMBLE[0], BYTES_PREAMBLE[1], BYTES_PREAMBLE[2], BYTES_PREAMBLE[3]};
             // Same on both sides, not DDR
 `else
+`ifdef LOW_NIBBLE_FIRST            
             tx_data_h <= BYTES_PREAMBLE[3:0];
             tx_data_l <= BYTES_PREAMBLE[3:0];
+`else
+            tx_data_h <= BYTES_PREAMBLE[7:4];
+            tx_data_l <= BYTES_PREAMBLE[7:4];
+`endif
 `endif
           end
         end // !ddr
@@ -278,16 +288,26 @@ always_ff @(posedge tx_clk) begin
             tx_data_h <= {BYTES_SFD[4], BYTES_SFD[5], BYTES_SFD[6], BYTES_SFD[7]};
             tx_data_l <= {BYTES_SFD[4], BYTES_SFD[5], BYTES_SFD[6], BYTES_SFD[7]};
 `else
+`ifdef LOW_NIBBLE_FIRST            
             tx_data_h <= BYTES_SFD[7:4];
             tx_data_l <= BYTES_SFD[7:4];
+`else
+            tx_data_h <= BYTES_SFD[3:0];
+            tx_data_l <= BYTES_SFD[3:0];
+`endif
 `endif
           end else begin
 `ifdef FLIP_BITS
             tx_data_h <= {BYTES_SFD[0], BYTES_SFD[1], BYTES_SFD[2], BYTES_SFD[3]};
             tx_data_l <= {BYTES_SFD[0], BYTES_SFD[1], BYTES_SFD[2], BYTES_SFD[3]};
 `else
+`ifdef LOW_NIBBLE_FIRST            
             tx_data_h <= BYTES_SFD[3:0];
             tx_data_l <= BYTES_SFD[3:0];
+`else
+            tx_data_h <= BYTES_SFD[7:4];
+            tx_data_l <= BYTES_SFD[7:4];
+`endif
 `endif
           end
         end // !ddr
@@ -306,8 +326,13 @@ always_ff @(posedge tx_clk) begin
             tx_data_h <= {current_data[0], current_data[1], current_data[2], current_data[3]};
             tx_data_l <= {current_data[0], current_data[1], current_data[2], current_data[3]};
 `else
+`ifdef LOW_NIBBLE_FIRST           
             tx_data_h <= current_data[3:0];
             tx_data_l <= current_data[3:0];
+`else            
+            tx_data_h <= current_data[7:4];
+            tx_data_l <= current_data[7:4];
+`endif
 `endif
           end else begin
             // Second half of our byte - higher part
@@ -315,8 +340,13 @@ always_ff @(posedge tx_clk) begin
             tx_data_h <= {current_data[4], current_data[5], current_data[6], current_data[7]};
             tx_data_l <= {current_data[4], current_data[5], current_data[6], current_data[7]};
 `else
+`ifdef LOW_NIBBLE_FIRST           
             tx_data_h <= current_data[7:4];
             tx_data_l <= current_data[7:4];
+`else
+            tx_data_h <= current_data[3:0];
+            tx_data_l <= current_data[3:0];
+`endif
 `endif
             count <= count + 1'd1;
             // FIXME: For now we send CRC as part of data
