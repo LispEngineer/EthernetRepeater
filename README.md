@@ -211,6 +211,11 @@ won't work.
   * [DualComm](https://www.dualcomm.com/collections/featured-products/products/usb-powered-10-100-1000base-t-network-tap)
   * [ProfiShark 1G](https://blog.packet-foo.com/2014/12/a-look-at-a-portable-usb3-network-tap/)
 
+
+* Filters
+  * `eth.type != 0x86dd && eth.type != 0x0800` - remove all IPv6 and IPv4 packets
+    * (Generally leaves just ARP and invalid stuff)
+
 # Notes on Test Harness
 
 Ensure Quartus Settings -> Simulation shows `Questa Intel FPGA`

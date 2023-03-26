@@ -510,7 +510,7 @@ always_ff @(posedge CLOCK_50) begin
     // The transmitter is busy, nothing to do
   end else if (send_activate) begin
     // Do nothing
-  end else if (!send_busy && !send_activate && !KEY[1] && KEY[1] != last_key[1]) begin
+  end else if (!send_busy && !send_activate && !KEY[1] && KEY[1] != last_key_tx[1]) begin
     // We're not busy, not awaiting activation, and the key was just pressed
     // (remember key down reports logic 0)
     send_activate <= '1;
