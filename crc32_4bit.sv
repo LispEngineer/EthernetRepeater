@@ -29,9 +29,9 @@
 // Input word width:            4 bits
 
 module crc32_4bit(
-    input  [31:0] crc_in,
-    input   [3:0] data_nibble,
-    output [31:0] crc_out
+    input  logic [31:0] crc_in,
+    input  logic  [3:0] data_nibble,
+    output logic [31:0] crc_out
 );
 
 always_comb begin

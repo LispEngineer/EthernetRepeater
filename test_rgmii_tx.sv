@@ -36,6 +36,8 @@ logic [3:0] tx_data_l;
 logic tx_ctl_h, tx_ctl_l;
 logic tx_ctl;
 logic gtx_clk;
+logic [31:0] crc;
+logic [31:0] crc_final; // XOR'd with the final value
 
 rgmii_tx dut (
   .tx_clk(clk),
@@ -47,13 +49,15 @@ rgmii_tx dut (
   .tx_data_h(tx_data_h),
   .tx_data_l(tx_data_l),
   .tx_ctl_h(tx_ctl_h),
-  .tx_ctl_l(tx_ctl_l)
+  .tx_ctl_l(tx_ctl_l),
+  .crc_out(crc)
 );
 
 // Make our DDR "actual output" signals
 always_comb begin
   tx_data = gtx_clk ? tx_data_h : tx_data_l;
   tx_ctl  = (gtx_clk && tx_ctl_h)  || (!gtx_clk && tx_ctl_l);
+  crc_final = crc ^ 32'hFFFF_FFFF;
 end
 
 // initialize test with a reset for 22 ns

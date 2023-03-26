@@ -130,7 +130,11 @@ module rgmii_tx /* #(
   // This means the output stays high during transmission
   // and low during non-transmission, in the absence of errors.
   output logic tx_ctl_h, // TX_EN
-  output logic tx_ctl_l  // TX_ERR XOR TX_EN
+  output logic tx_ctl_l,  // TX_ERR XOR TX_EN
+
+  ////////////////////////////////////////////////////
+  // Debugging outputs
+  output logic [31:0] crc_out
 );
 
 // Our sending state machine
@@ -171,9 +175,26 @@ logic [7:0] current_data;
 logic [3:0] d_h;
 logic [3:0] d_l;
 
+// The ongoing calcuation of CRC32.
+// We send this least significant byte first
+logic [31:0] crc;
+localparam CRC_INIT = 32'hFFFF_FFFF;
+localparam CRC_XOR_OUT = 32'hFFFF_FFFF;
+// If we include the CRC at the end with our CRC calculation we should get this
+// fixed number
+localparam CRC_CHECK = 32'hCBF4_3926;
+
 data_packet data_packet (
   .addr(count[6:0]),
   .val(current_data)
+);
+
+// Combinational calculation of the next CRC given current one.
+logic [31:0] next_crc;
+crc32_8bit crc_byte_calc(
+  .crc_in(crc),
+  .crc_out(next_crc),
+  .data_byte(current_data)
 );
 
 always_comb begin
@@ -185,6 +206,9 @@ always_comb begin
 
   tx_data_h = d_h;
   tx_data_l = d_l;
+
+  // Debugging outputs
+  crc_out = crc;
 end
 
 // Synchronizer
@@ -271,6 +295,7 @@ always_ff @(posedge tx_clk) begin
             d_l <= 4'b1101;
             state <= S_DATA;
             count <= '0;
+            crc <= CRC_INIT;
           end
         end // !ddr
 
@@ -286,6 +311,7 @@ always_ff @(posedge tx_clk) begin
           if (nibble) begin
             d_h <= current_data[7:4];
             d_l <= current_data[7:4];
+            crc <= next_crc; // Get the next CRC value for the full data byte
           end else begin
             d_h <= current_data[3:0];
             d_l <= current_data[3:0];
@@ -297,23 +323,40 @@ always_ff @(posedge tx_clk) begin
             // Second half of our byte
             count <= count + 1'd1;
             // FIXME: For now we send CRC as part of data
-            if (count == LAST_CRC_BYTE) begin
-              state <= S_IDLE;
-              // Let's stay busy until we're IN the idle state
-              // Let's keep tx_en until we're IN the idle state
+            if (count == LAST_DATA_BYTE) begin
+              state <= S_FCS;
+              count <= 0;
             end
           end
-        end
+        end // !txn_ddr
 
         // FIXME: CODE txn_ddr
       end
 
       S_FCS: begin ////////////////////////////////////////////////////
-        // We are going to send a fixed CRC value for FCS
-        state <= S_IDLE;
-        busy <= '0;
-        // FIXME: CODE ME
-        // FOR NOW: Is part of S_DATA
+        // We are going to send the calculated CRC, least significant byte
+        // first, and least significant nibble of each byte first.
+        // So we will send 8 nibbles from the bottom to the top
+
+        if (!txn_ddr) begin
+
+          // Select 4 bits starting at (count + 1) * 4 - 1
+          // https://stackoverflow.com/questions/18067571/indexing-vectors-and-arrays-with
+          d_h <= crc[(count << 2) +:4] ^ 4'b1111; // Add final XOR
+          d_l <= crc[(count << 2) +:4] ^ 4'b1111;
+
+          count <= count + 1'd1;
+          if (count == 7) begin
+            // We are sending our final nibble, so we're done
+            state <= S_IDLE;
+          end
+
+        end // !txn_ddr
+
+        // FIXME: Code txn_ddr
+
+        // Let's stay busy until we're IN the idle state
+        // Let's keep tx_en until we're IN the idle state
       end
 
       default: begin

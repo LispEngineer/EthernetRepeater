@@ -30,9 +30,9 @@
 // Input word width:            8 bits
 
 module crc32_8bit(
-    input  [31:0] crc_in,
-    input   [7:0] data_byte,
-    output [31:0] crc_out
+    input  logic [31:0] crc_in,
+    input  logic  [7:0] data_byte,
+    output logic [31:0] crc_out
 );
 
 always_comb begin
