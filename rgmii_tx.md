@@ -13,3 +13,9 @@ First version: Just send a fixed packet.
 Convert a file of hex bytes (with possible leading spaces) into a ROM:
 
     sed 's/^ *//' <x | tr ' ' '\n' | nl -v 0 | sed "s/\t/: val = 8'h/" | sed 's/$/;/' | sed s"/^ */6'd/"
+
+# Code Notes
+
+* `FLIP_BITS` macro, if defined, will send the bits in each nibble out in backwards order
+  from how they are in tx_data.
+  * Not yet sure which one is correct

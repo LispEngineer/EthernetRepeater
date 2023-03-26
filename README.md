@@ -68,7 +68,10 @@ added by HSMC card. Some useful features:
     * Speed
     * Duplex
   * Could handle interrupts
+
 * Simple RGMII TX interface
+  * Set the use of clocks for the RX_CLK and GTX_CLK
+  * Figure out how to delay the GTX_CLK appropriately
   * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
     * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
   * Handle DDR
