@@ -117,6 +117,7 @@ added by HSMC card. Some useful features:
     * Not sure what RWT is, but it might be "Receive Watchdog Timeout" (referenced in
       an Intel Cyclone V HPS EMAC Technical Reference Manual)
     * A Microchip LAN7801 says RWT was because a frame longer than 11,264 was received.
+  * This bug occurs with `GTX_CLK` set to either `clock_2p5_12ns` and `clock_2p5_90deg`
   * Monitor counts with:
 
           clear ; while /bin/true ; do echo -e -n '\E[45A' ; for i in `ls /sys/class/net/enp175s0/statistics/ | fgrep -v txxxx_` ; do echo $i `cat /sys/class/net/enp175s0/statistics/$i` ; done ; echo ; ifconfig enp175s0 ; sleep 1 ; done

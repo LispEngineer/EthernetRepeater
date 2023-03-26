@@ -509,7 +509,8 @@ rgmii_tx rgmii_tx1 (
 );
 
 assign ENET1_TX_ER = '0;
-assign ENET1_GTX_CLK = clock_2p5_12ns; // gtx_clk_90;
+// We are getting framing errors, let's try different clocks...
+assign ENET1_GTX_CLK = clock_2p5_90deg; // clock_2p5_12ns; // gtx_clk_90;
 assign LEDG[7] = clock_2p5_locked; // pll_locked;
 
 // Set up our DDR output pins for RGMII transmit
