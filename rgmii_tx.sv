@@ -286,12 +286,12 @@ always_ff @(posedge tx_clk) begin
         if (!txn_ddr) begin
 
           // Send our data
-          if (!nibble) begin
-            d_h <= current_data[7:4];
-            d_l <= current_data[7:4];
+          if (nibble) begin
+            d_h <= { current_data[4], current_data[5], current_data[6], current_data[7] };
+            d_l <= { current_data[4], current_data[5], current_data[6], current_data[7] };
           end else begin
-            d_h <= current_data[3:0];
-            d_l <= current_data[3:0];
+            d_h <= { current_data[0], current_data[1], current_data[2], current_data[3] };
+            d_l <= { current_data[0], current_data[1], current_data[2], current_data[3] };
           end
 
           // Handle advancing state
