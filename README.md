@@ -151,7 +151,10 @@ next clock when it's loaded into the FF, rather than the current clock.
 Remember - the `inout` must be a SystemVerilog `wire` and not `logic` or else it
 won't work.
 
+## CRC Generator Modules
 
+Used the generated code from [this site](https://bues.ch/cms/hacking/crcgen)
+and made it into SystemVerilog. Source is [on Github](https://github.com/mbuesch/crcgen).
 
 
 
