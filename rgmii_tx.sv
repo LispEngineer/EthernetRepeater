@@ -159,10 +159,28 @@ logic tx_err;
 
 logic [7:0] current_data;
 
+// The data outputs in the internal path we're using in our state machine
+logic [3:0] d_h;
+logic [3:0] d_l;
+
 data_packet data_packet (
   .addr(count[6:0]),
   .val(current_data)
 );
+
+// `define LOW_NIBBLE_FIRST // EXPERIMENT for the PREAMBLE/SFD
+// Results in 49 bytes, starting d5 61 ad then ending 61 ad repeating
+// 61 ad = 0110 0001 1010 1101
+
+`define FLIP_BITS // EXPERIMENT for Preamble/SFD
+// Results in 48 bytes, 35 ac repeated
+// 0011 0101 1010 1100
+// We sent not (C3 5A == 1100_0011 0101_1010)
+//                       0011 1100 1010 0101
+// This is starting to look like we're getting somewhere
+// 
+// THIS IS IT! The bits are flipped in each nibble.
+// We got a packet of c3 5a 48 bytes long!
 
 always_comb begin
   gtx_clk = tx_clk;
@@ -170,6 +188,23 @@ always_comb begin
   tx_ctl_l = tx_en ^ tx_err;
   real_activate = syncd_activate[SYNC_LEN - 1];
   real_ddr_tx = syncd_ddr_tx[SYNC_LEN - 1];
+
+  // Our (bit flipped or straight through) tx_data lines
+  // TODO: We could also make them inverted...?
+
+`ifdef FLIP_BITS  
+  tx_data_h[0] = d_h[3];
+  tx_data_h[1] = d_h[2];
+  tx_data_h[2] = d_h[1];
+  tx_data_h[3] = d_h[0];
+  tx_data_l[0] = d_l[3];
+  tx_data_l[1] = d_l[2];
+  tx_data_l[2] = d_l[1];
+  tx_data_l[3] = d_l[0];
+`else
+  tx_data_h = d_h;
+  tx_data_l = d_l;
+`endif
 end
 
 // Synchronizer
@@ -213,10 +248,6 @@ always_ff @(posedge tx_clk) begin
 
       end
 
-`define LOW_NIBBLE_FIRST // EXPERIMENT for the PREAMBLE/SFD
-// Results in 49 bytes, starting d5 61 ad then ending 61 ad repeating
-// 61 ad = 0110 0001 1010 1101
-
       S_PREAMBLE: begin ////////////////////////////////////////////////////
         // Preamble is 7 bytes of 1010_1010
 
@@ -245,34 +276,20 @@ always_ff @(posedge tx_clk) begin
               // We are sending our 7th byte, second nibble, move on to SFP
               state <= S_SFD;
             end
-`ifdef FLIP_BITS
-            // Send LSB first (in the tx_data_h[3])
-            tx_data_h <= {BYTES_PREAMBLE[4], BYTES_PREAMBLE[5], BYTES_PREAMBLE[6], BYTES_PREAMBLE[7]};
-            tx_data_l <= {BYTES_PREAMBLE[4], BYTES_PREAMBLE[5], BYTES_PREAMBLE[6], BYTES_PREAMBLE[7]};
-`else
-            // Send MSB first (in the tx_data_h[3])
 `ifdef LOW_NIBBLE_FIRST            
-            tx_data_h <= BYTES_PREAMBLE[7:4];
-            tx_data_l <= BYTES_PREAMBLE[7:4];
+            d_h <= BYTES_PREAMBLE[7:4];
+            d_l <= BYTES_PREAMBLE[7:4];
 `else
-            tx_data_h <= BYTES_PREAMBLE[3:0];
-            tx_data_l <= BYTES_PREAMBLE[3:0];
-`endif            
+            d_h <= BYTES_PREAMBLE[3:0];
+            d_l <= BYTES_PREAMBLE[3:0];
 `endif            
           end else begin 
-`ifdef FLIP_BITS
-            // Bottom nibble sent first, LSB first
-            tx_data_h <= {BYTES_PREAMBLE[0], BYTES_PREAMBLE[1], BYTES_PREAMBLE[2], BYTES_PREAMBLE[3]};
-            tx_data_l <= {BYTES_PREAMBLE[0], BYTES_PREAMBLE[1], BYTES_PREAMBLE[2], BYTES_PREAMBLE[3]};
-            // Same on both sides, not DDR
-`else
 `ifdef LOW_NIBBLE_FIRST            
-            tx_data_h <= BYTES_PREAMBLE[3:0];
-            tx_data_l <= BYTES_PREAMBLE[3:0];
+            d_h <= BYTES_PREAMBLE[3:0];
+            d_l <= BYTES_PREAMBLE[3:0];
 `else
-            tx_data_h <= BYTES_PREAMBLE[7:4];
-            tx_data_l <= BYTES_PREAMBLE[7:4];
-`endif
+            d_h <= BYTES_PREAMBLE[7:4];
+            d_l <= BYTES_PREAMBLE[7:4];
 `endif
           end
         end // !ddr
@@ -289,30 +306,20 @@ always_ff @(posedge tx_clk) begin
             // Send our second half and move to sending data
             state <= S_DATA;
             count <= '0;
-`ifdef FLIP_BITS            
-            tx_data_h <= {BYTES_SFD[4], BYTES_SFD[5], BYTES_SFD[6], BYTES_SFD[7]};
-            tx_data_l <= {BYTES_SFD[4], BYTES_SFD[5], BYTES_SFD[6], BYTES_SFD[7]};
-`else
 `ifdef LOW_NIBBLE_FIRST            
-            tx_data_h <= BYTES_SFD[7:4];
-            tx_data_l <= BYTES_SFD[7:4];
+            d_h <= BYTES_SFD[7:4];
+            d_l <= BYTES_SFD[7:4];
 `else
-            tx_data_h <= BYTES_SFD[3:0];
-            tx_data_l <= BYTES_SFD[3:0];
-`endif
+            d_h <= BYTES_SFD[3:0];
+            d_l <= BYTES_SFD[3:0];
 `endif
           end else begin
-`ifdef FLIP_BITS
-            tx_data_h <= {BYTES_SFD[0], BYTES_SFD[1], BYTES_SFD[2], BYTES_SFD[3]};
-            tx_data_l <= {BYTES_SFD[0], BYTES_SFD[1], BYTES_SFD[2], BYTES_SFD[3]};
-`else
 `ifdef LOW_NIBBLE_FIRST            
-            tx_data_h <= BYTES_SFD[3:0];
-            tx_data_l <= BYTES_SFD[3:0];
+            d_h <= BYTES_SFD[3:0];
+            d_l <= BYTES_SFD[3:0];
 `else
-            tx_data_h <= BYTES_SFD[7:4];
-            tx_data_l <= BYTES_SFD[7:4];
-`endif
+            d_h <= BYTES_SFD[7:4];
+            d_l <= BYTES_SFD[7:4];
 `endif
           end
         end // !ddr
@@ -351,10 +358,16 @@ always_ff @(posedge tx_clk) begin
           // Sent: (inverted)     1100001101011010110000110101101011000011010110101100001101011010
           // Rcvd nib rev:                       1010000101011101
           case ({count[0], nibble})
-            2'b00: begin tx_data_h <= ~4'b1100; tx_data_l <= ~4'b1100; end // C inv
-            2'b01: begin tx_data_h <= ~4'b0011; tx_data_l <= ~4'b0011; end // 3 inv
-            2'b10: begin tx_data_h <= ~4'b0101; tx_data_l <= ~4'b0101; end // 5 inv
-            2'b11: begin tx_data_h <= ~4'b1010; tx_data_l <= ~4'b1010; end // A inv
+            2'b00: begin d_h <= 4'b1100; d_l <= 4'b1100; end // C inv
+            2'b01: begin d_h <= 4'b0011; d_l <= 4'b0011; end // 3 inv
+            2'b10: begin d_h <= 4'b0101; d_l <= 4'b0101; end // 5 inv
+            2'b11: begin d_h <= 4'b1010; d_l <= 4'b1010; end // A inv
+/*              
+            2'b00: begin d_h <= ~4'b1100; d_l <= ~4'b1100; end // C inv
+            2'b01: begin d_h <= ~4'b0011; d_l <= ~4'b0011; end // 3 inv
+            2'b10: begin d_h <= ~4'b0101; d_l <= ~4'b0101; end // 5 inv
+            2'b11: begin d_h <= ~4'b1010; d_l <= ~4'b1010; end // A inv
+*/              
           endcase
 
           // Handle advancing state
