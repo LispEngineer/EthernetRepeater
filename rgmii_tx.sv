@@ -213,6 +213,10 @@ always_ff @(posedge tx_clk) begin
 
       end
 
+`define LOW_NIBBLE_FIRST // EXPERIMENT for the PREAMBLE/SFD
+// Results in 49 bytes, starting d5 61 ad then ending 61 ad repeating
+// 61 ad = 0110 0001 1010 1101
+
       S_PREAMBLE: begin ////////////////////////////////////////////////////
         // Preamble is 7 bytes of 1010_1010
 
@@ -338,7 +342,7 @@ always_ff @(posedge tx_clk) begin
           // Received inv nib rev: 1010000101101101 (no match)
           // 
           // TEST 2: Send the same pattern with all bits inverted
-          // Sending: 0011 1100 1010 0101
+          // Sending: 0011 1100 1010 0101 == 3C A3
           // Received: 1d d6 then 1a d6 repeating (weird that the first one is reliably 1d)
           //                      0001110111010110 1d d6
           //                      0001101011010101 1a d6
