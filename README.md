@@ -110,8 +110,12 @@ added by HSMC card. Some useful features:
   It shows up in `kern.log` and `dmesg` as:
   `Mar 26 14:00:05 P3L kernel: [90913.305607] r8169 0000:af:00.0 enp175s0: Rx ERROR. status = 3231c03e`
   * Shows up as a Realtek RTL8125 2.5GbE Controller in `lspci`
+  * Reading the Linux RTL8125 driver, this seems to mean it's a RUNT or RWT
+    * Not sure what RWT is, but it might be "Receive Watchdog Timeout" (referenced in
+      an Intel Cyclone V HPS EMAC Technical Reference Manual)
+    * A Microchip LAN7801 says RWT was because a frame longer than 11,264 was received.
   * Monitor counts with:
-  
+
           clear ; while /bin/true ; do echo -e -n '\E[45A' ; for i in `ls /sys/class/net/enp175s0/statistics/ | fgrep -v txxxx_` ; do echo $i `cat /sys/class/net/enp175s0/statistics/$i` ; done ; echo ; ifconfig enp175s0 ; sleep 1 ; done
 
 * Sometimes I have to send the MDIO request a few times to get it to respond
