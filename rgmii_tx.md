@@ -14,6 +14,20 @@ Convert a file of hex bytes (with possible leading spaces) into a ROM:
 
     sed 's/^ *//' <x | tr ' ' '\n' | nl -v 0 | sed "s/\t/: val = 8'h/" | sed 's/$/;/' | sed s"/^ */6'd/"
 
+# TX Data sending order
+
+## 10BASE-T (2.5MHz) RGMII mode
+
+* Send one nibble each cycle (not two) - same on H and L of clock
+* First nibble (of each byte) sent should be the high nibble, bits 7:4
+  * Followed by the low nibble, bits 3:0
+* The `tx_data_h`/`_l` signals have their bits reversed compared to
+  the original data nibbles.
+  * I cannot find this documented clearly or perfectly anywhere.
+    The 802.3-2022 has section 22.2.3 with Figure 22-13, but that
+    is confusing. Table 22-3 tries to help. Why not just say it clearly
+    in plain English?
+
 # Code Notes
 
 * `FLIP_BITS` macro, if defined, will send the bits in each nibble out in backwards order
