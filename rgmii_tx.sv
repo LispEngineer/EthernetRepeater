@@ -168,20 +168,6 @@ data_packet data_packet (
   .val(current_data)
 );
 
-// `define LOW_NIBBLE_FIRST // EXPERIMENT for the PREAMBLE/SFD
-// Results in 49 bytes, starting d5 61 ad then ending 61 ad repeating
-// 61 ad = 0110 0001 1010 1101
-
-`define FLIP_BITS // EXPERIMENT for Preamble/SFD
-// Results in 48 bytes, 35 ac repeated
-// 0011 0101 1010 1100
-// We sent not (C3 5A == 1100_0011 0101_1010)
-//                       0011 1100 1010 0101
-// This is starting to look like we're getting somewhere
-// 
-// THIS IS IT! The bits are flipped in each nibble.
-// We got a packet of c3 5a 48 bytes long!
-
 always_comb begin
   gtx_clk = tx_clk;
   tx_ctl_h = tx_en;
@@ -189,10 +175,9 @@ always_comb begin
   real_activate = syncd_activate[SYNC_LEN - 1];
   real_ddr_tx = syncd_ddr_tx[SYNC_LEN - 1];
 
-  // Our (bit flipped or straight through) tx_data lines
-  // TODO: We could also make them inverted...?
-
-`ifdef FLIP_BITS  
+  // Per 802.3-2022, the nibble bits are flipped
+  // as compared to the actual nibbles, as they
+  // seem to be transmited LSB first.
   tx_data_h[0] = d_h[3];
   tx_data_h[1] = d_h[2];
   tx_data_h[2] = d_h[1];
@@ -201,10 +186,6 @@ always_comb begin
   tx_data_l[1] = d_l[2];
   tx_data_l[2] = d_l[1];
   tx_data_l[3] = d_l[0];
-`else
-  tx_data_h = d_h;
-  tx_data_l = d_l;
-`endif
 end
 
 // Synchronizer
@@ -256,18 +237,8 @@ always_ff @(posedge tx_clk) begin
 
         if (!txn_ddr) begin
 
-          // Non-DDR (regular MII) mode:
-          // FIXME: Review Table 22-3 in 802.3-2022
-          // It seems that the txd[0] is MSB of nibble
-          // and txd[3] is LSB of the nibble.
-          // Example:
-          // Preamble: txd0=1, txd1=0, txd2=0, txd3=1 x15
-          //     then: txd0=1, txd1=0, txd2=1, txd3=1 x1
-          // Then first data byte:
-          // txd0=d0, txd1=d1, txd2=d2, txd3=d3
-          // txd0=d4, txd1=d5, txd2=d6, txd3=d7
-          // Serially, we would transmit LSB first, and then
-          // stick the lsb into txd0, txd1, txd2, txd3
+          // We always transmit the high nibble first.
+          // Review Table 22-3 in 802.3-2022
 
           nibble <= ~nibble;
           if (nibble) begin
@@ -276,21 +247,11 @@ always_ff @(posedge tx_clk) begin
               // We are sending our 7th byte, second nibble, move on to SFP
               state <= S_SFD;
             end
-`ifdef LOW_NIBBLE_FIRST            
-            d_h <= BYTES_PREAMBLE[7:4];
-            d_l <= BYTES_PREAMBLE[7:4];
-`else
             d_h <= BYTES_PREAMBLE[3:0];
             d_l <= BYTES_PREAMBLE[3:0];
-`endif            
           end else begin 
-`ifdef LOW_NIBBLE_FIRST            
-            d_h <= BYTES_PREAMBLE[3:0];
-            d_l <= BYTES_PREAMBLE[3:0];
-`else
             d_h <= BYTES_PREAMBLE[7:4];
             d_l <= BYTES_PREAMBLE[7:4];
-`endif
           end
         end // !ddr
         // FIXME: CODE txn_ddr
@@ -306,21 +267,11 @@ always_ff @(posedge tx_clk) begin
             // Send our second half and move to sending data
             state <= S_DATA;
             count <= '0;
-`ifdef LOW_NIBBLE_FIRST            
-            d_h <= BYTES_SFD[7:4];
-            d_l <= BYTES_SFD[7:4];
-`else
             d_h <= BYTES_SFD[3:0];
             d_l <= BYTES_SFD[3:0];
-`endif
           end else begin
-`ifdef LOW_NIBBLE_FIRST            
-            d_h <= BYTES_SFD[3:0];
-            d_l <= BYTES_SFD[3:0];
-`else
             d_h <= BYTES_SFD[7:4];
             d_l <= BYTES_SFD[7:4];
-`endif
           end
         end // !ddr
 
@@ -335,39 +286,11 @@ always_ff @(posedge tx_clk) begin
           // Send a test pattern:
           // 1100_0011 0101_1010 == C3 5A
           // We can do this since we know we can receive invalid-CRC frames
-          // TEST RESULTS:
-          // Received: E5 29 == 1110_0101 0010_1001 (repeating)
-          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
-          // Received:             1110010100101001 (no match - no string of 3 1s)
-          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
-          // Received nibble rev:  0101111010010010 (no match)
-          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
-          // Received rev:         1001010010100111 (no match)
-          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
-          // Received inv:            0001101011010110 (match!!!) weird off by one bit ...!
-          // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
-          // Received inv nib rev: 1010000101101101 (no match)
-          // 
-          // TEST 2: Send the same pattern with all bits inverted
-          // Sending: 0011 1100 1010 0101 == 3C A3
-          // Received: 1d d6 then 1a d6 repeating (weird that the first one is reliably 1d)
-          //                      0001110111010110 1d d6
-          //                      0001101011010101 1a d6
-          // Sent: (inverted)     1100001101011010110000110101101011000011010110101100001101011010
-          // Rcvd:                   0001101011010101 (no match)
-          // Sent: (inverted)     1100001101011010110000110101101011000011010110101100001101011010
-          // Rcvd nib rev:                       1010000101011101
           case ({count[0], nibble})
-            2'b00: begin d_h <= 4'b1100; d_l <= 4'b1100; end // C inv
-            2'b01: begin d_h <= 4'b0011; d_l <= 4'b0011; end // 3 inv
-            2'b10: begin d_h <= 4'b0101; d_l <= 4'b0101; end // 5 inv
-            2'b11: begin d_h <= 4'b1010; d_l <= 4'b1010; end // A inv
-/*              
-            2'b00: begin d_h <= ~4'b1100; d_l <= ~4'b1100; end // C inv
-            2'b01: begin d_h <= ~4'b0011; d_l <= ~4'b0011; end // 3 inv
-            2'b10: begin d_h <= ~4'b0101; d_l <= ~4'b0101; end // 5 inv
-            2'b11: begin d_h <= ~4'b1010; d_l <= ~4'b1010; end // A inv
-*/              
+            2'b00: begin d_h <= 4'b1100; d_l <= 4'b1100; end // C
+            2'b01: begin d_h <= 4'b0011; d_l <= 4'b0011; end // 3
+            2'b10: begin d_h <= 4'b0101; d_l <= 4'b0101; end // 5
+            2'b11: begin d_h <= 4'b1010; d_l <= 4'b1010; end // A
           endcase
 
           // Handle advancing state
