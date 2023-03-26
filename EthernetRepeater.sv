@@ -206,7 +206,7 @@ module EthernetRepeater(
 
 // Zero out unused outputs
 always_comb begin
-  LEDG[7:5] = '0;
+  LEDG[6:5] = '0;
   LEDR[17:16] = '0;
   HEX0 = '1; // These LED segments are OFF when logic 1
   HEX1 = '1;
@@ -450,9 +450,10 @@ end
 
 logic [3:0] tx_data_h, tx_data_l;
 logic tx_ctl_h, tx_ctl_l;
-logic gtx_clk;
+logic gtx_clk, gtx_clk_90;
 logic send_activate = '0;
 logic send_busy;
+logic pll_locked;
 
 rgmii_tx rgmii_tx1 (
   .tx_clk(ENET1_RX_CLK),
@@ -469,8 +470,17 @@ rgmii_tx rgmii_tx1 (
   .tx_ctl_l(tx_ctl_l)
 );
 
+// Use a PLL to get a 90⁰ delayed version of the clock
+pll_5mhz_90	pll_5mhz_90_inst (
+  .areset('0),
+	.inclk0(ENET1_RX_CLK),
+	.c0(gtx_clk_90),
+	.locked(pll_locked)
+);
+
 assign ENET1_TX_ER = '0;
-assign ENET1_GTX_CLK = gtx_clk;
+assign ENET1_GTX_CLK = gtx_clk_90;
+assign LEDG[7] = pll_locked;
 
 // TODO: SET UP DDR OUTPUT PINS
 ddr_output_4 ddr_output4_rgmii1_tx_data (

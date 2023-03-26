@@ -81,5 +81,13 @@ d5 ff ff ff ff ff
 a1
 ```
 
-This looks even worse. Let me delay the clock 90⁰.
+It doesn't even receive ANYTHING at 100/full.
 
+This looks even worse. It might be off by a single bit? Let me delay the clock 90⁰.
+The problem is the PLL won't lock below 5MHz! Oy.
+
+* Also, note Register 20 bit 1 will add a delay to GTX_CLK for TXD outputs.
+  * Will require software reset after.
+
+I used a 5MHz 90⁰ phase shift PLL, which shows locked, but it didn't help.
+The received data is identical (and still very wrong).
