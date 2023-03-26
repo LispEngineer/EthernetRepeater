@@ -333,14 +333,24 @@ always_ff @(posedge tx_clk) begin
           // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
           // Received rev:         1001010010100111 (no match)
           // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
-          // Received inv:            0001101011010110 (match!!!) weird
+          // Received inv:            0001101011010110 (match!!!) weird off by one bit ...!
           // Sent:                 1100001101011010110000110101101011000011010110101100001101011010
           // Received inv nib rev: 1010000101101101 (no match)
+          // 
+          // TEST 2: Send the same pattern with all bits inverted
+          // Sending: 0011 1100 1010 0101
+          // Received: 1d d6 then 1a d6 repeating (weird that the first one is reliably 1d)
+          //                      0001110111010110 1d d6
+          //                      0001101011010101 1a d6
+          // Sent: (inverted)     1100001101011010110000110101101011000011010110101100001101011010
+          // Rcvd:                   0001101011010101 (no match)
+          // Sent: (inverted)     1100001101011010110000110101101011000011010110101100001101011010
+          // Rcvd nib rev:                       1010000101011101
           case ({count[0], nibble})
-            2'b00: begin tx_data_h <= 4'b1100; tx_data_l <= 4'b1100; end // C
-            2'b01: begin tx_data_h <= 4'b0011; tx_data_l <= 4'b0011; end // 3
-            2'b10: begin tx_data_h <= 4'b0101; tx_data_l <= 4'b0101; end // 5
-            2'b11: begin tx_data_h <= 4'b1010; tx_data_l <= 4'b1010; end // A
+            2'b00: begin tx_data_h <= ~4'b1100; tx_data_l <= ~4'b1100; end // C inv
+            2'b01: begin tx_data_h <= ~4'b0011; tx_data_l <= ~4'b0011; end // 3 inv
+            2'b10: begin tx_data_h <= ~4'b0101; tx_data_l <= ~4'b0101; end // 5 inv
+            2'b11: begin tx_data_h <= ~4'b1010; tx_data_l <= ~4'b1010; end // A inv
           endcase
 
           // Handle advancing state
