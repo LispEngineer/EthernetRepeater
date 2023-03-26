@@ -1,5 +1,7 @@
 # Debugging Notes 1
 
+**This is being tested with RGMII mode and a link established at 10M/Full.**
+
 First packet transmitted!
 
 This packet was received with a CRC error and a length error, per the counters
@@ -55,3 +57,29 @@ Some conclusions:
   * 20 = 0010_0000
   * 04 = 0000_0100
 * Looks like some of the bits aren't transmitted/received correctly
+
+# Packet 2
+
+Reversed the order in the bits for each nibble. Received this:
+
+```
+d5 ff ff ff ff ff 
+7f 03 70 a6 ef ef 
+6f 04 
+03 80 
+00 00 
+00
+03
+02 80
+00 03 70 a6 ef ef
+6f 08 90 ef
+6f 00 00 00 00 00 
+80 ff ff ff 
+7f 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 
+80 ba 85 a5 
+a1
+```
+
+This looks even worse. Let me delay the clock 90⁰.
+
