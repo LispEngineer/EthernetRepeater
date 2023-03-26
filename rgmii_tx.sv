@@ -54,9 +54,9 @@ always_comb
   6'd26: val = 8'hDF;
   6'd27: val = 8'hDF;
   6'd28: val = 8'h10; // Sender IP (Made up)
-  6'd29: val = 8'h20;
-  6'd30: val = 8'hDF;
-  6'd31: val = 8'hDF;
+  6'd29: val = 8'hDF;
+  6'd30: val = 8'hDE;
+  6'd31: val = 8'hAD;
   6'd32: val = 8'h00; // Target MAC (anyone)
   6'd33: val = 8'h00;
   6'd34: val = 8'h00;
@@ -84,11 +84,12 @@ always_comb
   6'd56: val = 8'h00;
   6'd57: val = 8'h00;
   6'd58: val = 8'h00;
-  6'd59: val = 8'h00;
+  6'd59: val = 8'h00; // END OF PACKET
 
   // CRC for this packet can be calculated here:
   // https://crccalc.com/?crc=ff+ff+ff+ff+ff+ff++06+e0+4c+DF+DF+DF++08+06++00+01++00+00++06++04++00+01++06+e0+4c+DF+DF+DF++10+20+DF+DF++00+00+00+00+00+00++ff+ff+ff+ff++00+00+00+00+00+00+00+00+00+00+00+00+00+00+00+00&method=crc32&datatype=hex&outtype=0
   // This needs to be sent LSByte (least significant byte) first
+  // THIS IS NO LONGER CORRECT!!!
   6'd60: val = 8'h7B;
   6'd61: val = 8'h26;
   6'd62: val = 8'hB3;
