@@ -113,6 +113,9 @@ module EthernetRepeater(
   output logic  [3:0] ENET0_TX_DATA,
   output logic        ENET0_TX_EN,
   output logic        ENET0_TX_ER,
+
+  // Input from the Ethernet 25MHz crystal clock
+  // Mapped as a Global Signal: Global Clock
   input  logic        ENETCLK_25,
 
   //////////// Ethernet 1 //////////
@@ -122,6 +125,7 @@ module EthernetRepeater(
   output logic        ENET1_MDC,
   inout  wire         ENET1_MDIO,
   output logic        ENET1_RST_N,
+  // Mapped as a Global Signal: Global Clock
   input  logic        ENET1_RX_CLK,
   input  logic        ENET1_RX_COL,
   input  logic        ENET1_RX_CRS,
@@ -448,48 +452,73 @@ end
 
 // ETHERNET TRANSMITTER TOP LEVEL /////////////////////////////////////////////
 
-logic [3:0] tx_data_h, tx_data_l;
-logic tx_ctl_h, tx_ctl_l;
-logic gtx_clk, gtx_clk_90;
-logic send_activate = '0;
-logic send_busy;
-logic pll_locked;
+// Let's generate our own 2.5MHz 10BASE-T clock
+// with two outputs: one 12ns shifted and one 90⁰ phase shifted.
+// Marvell 88E1111 section 4.10.2 (Rev. M) says the MII setup time
+// for 10 Mbps is 10ns, and hold time is zero. Same for 100.
+// For 1000, section 4.12.2.1 says setup time is 1ns and hold is 0.8ns.
+//
+// At startup, Register 20.1 is 0 (no delay for TXD outputs)
+// and Register 20.7 is 0 (no added delay for RX_CLK)
 
-rgmii_tx rgmii_tx1 (
-  .tx_clk(ENET1_RX_CLK),
-  .reset('0),
-  .ddr_tx('0),
+logic clock_2p5, clock_2p5_12ns, clock_2p5_90deg;
+logic clock_2p5_locked;
 
-  .activate(send_activate),
-  .busy(send_busy),
-
-  .gtx_clk(gtx_clk),
-  .tx_data_h(tx_data_h),
-  .tx_data_l(tx_data_l),
-  .tx_ctl_h(tx_ctl_h),
-  .tx_ctl_l(tx_ctl_l)
+pll_50_to_2p5_with_shift	pll_50_to_2p5_with_shift_inst (
+	.areset('0),
+	.inclk0(CLOCK_50),
+	.c0(clock_2p5),
+	.c1(clock_2p5_12ns),
+	.c2(clock_2p5_90deg),
+	.locked(clock_2p5_locked)
 );
 
 // Use a PLL to get a 90⁰ delayed version of the clock
+/*
+logic pll_locked, gtx_clk_90;
+
 pll_5mhz_90	pll_5mhz_90_inst (
   .areset('0),
 	.inclk0(ENET1_RX_CLK),
 	.c0(gtx_clk_90),
 	.locked(pll_locked)
 );
+*/
+
+logic [3:0] tx_data_h, tx_data_l;
+logic tx_ctl_h, tx_ctl_l;
+logic gtx_clk;
+logic send_activate = '0;
+logic send_busy;
+
+// This will only work with 10BASE-T now, since the
+// clock speed doesn't change to adjust with the ENET1_RX_CLK.
+rgmii_tx rgmii_tx1 (
+  .tx_clk(clock_2p5),
+  .reset('0),
+  .ddr_tx('0),
+
+  .activate(send_activate),
+  .busy(send_busy),
+
+  .gtx_clk(gtx_clk), // Should be the same as tx_clk input above
+  .tx_data_h(tx_data_h),
+  .tx_data_l(tx_data_l),
+  .tx_ctl_h(tx_ctl_h),
+  .tx_ctl_l(tx_ctl_l)
+);
 
 assign ENET1_TX_ER = '0;
-assign ENET1_GTX_CLK = gtx_clk_90;
-assign LEDG[7] = pll_locked;
+assign ENET1_GTX_CLK = clock_2p5_12ns; // gtx_clk_90;
+assign LEDG[7] = clock_2p5_locked; // pll_locked;
 
-// TODO: SET UP DDR OUTPUT PINS
+// Set up our DDR output pins for RGMII transmit
 ddr_output_4 ddr_output4_rgmii1_tx_data (
 	.datain_h(tx_data_h),
 	.datain_l(tx_data_l),
 	.outclock(gtx_clk),
 	.dataout (ENET1_TX_DATA)
 );
-
 ddr_output_1 ddr_output1_rgmii1_tx_ctl (
 	.datain_h(tx_ctl_h),
 	.datain_l(tx_ctl_l),

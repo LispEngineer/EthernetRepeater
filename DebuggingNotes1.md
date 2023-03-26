@@ -158,3 +158,4 @@ Compare these two lines
 I have no idea. Could it be a clocking issue?
 * Create our own 2.5MHz clock from the system 50 clock with a PLL
   * Add at least a 12ns delay to the GTX_CLK - see Marvell 4.10.4
+* Set the Register 20.1 and don't use the PLL shifted TX
