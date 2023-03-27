@@ -4,19 +4,21 @@ Copyright &copy; 2023 Douglas P. Fields, Jr. All Rights Reserved.
 
 # Overview
 
+My SystemVerilog code is heavily commented for ease of readability.
+
 **Ultimate goal:**
 
 Build a SystemVerilog system that reads Ethernet packets on one port and
 reflects them directly out another port, and vice versa, allowing the
 FPGA to be a bidirectional repeater.
 
-**Initial goals:**
-
 Do all these things without a soft processor.
+
+**Initial goals:**
 
 * Build an MDC/MDIO interface to read all the ports.
   * Display them on the 7-segment displays
-* Build an MCD/MDIO interface to write (and read) all the ports.
+* Build an MDC/MDIO interface to write (and read) all the ports.
 * Build an interface that sends a simple ARP request packet
   * Calculate CRC
   * Send at 10BASE-T
@@ -34,7 +36,7 @@ Do all these things without a soft processor.
 
 This board has two 10/100/1000 copper Ethernet ports connected by a 
 [Marvel 88E1111 PHY](https://www.marvell.com/content/dam/marvell/en/public-collateral/transceivers/marvell-phys-transceivers-alaska-88e1111-datasheet.pdf),
-capable of MII and GRMII modes (selectable by jumper). The main FPGA is
+capable of MII and RGMII modes (selectable by jumper). The main FPGA is
 a Cyclone IV. It has a lot of I/O but no digital display - which can be
 added by HSMC card. Some useful features:
 
@@ -55,12 +57,14 @@ added by HSMC card. Some useful features:
 
 # Current Functionality
 
-* Management Interface
+* Management Interface - read & write enabled
   * Visually simulated in Questa
-  * Tested on real PHY
+  * Tested on real PHY for reading
 * RGMII Transmit Capability at 10BASE-T speeds
-  * Sends a fixed packet with pre-calculated CRC
   * Uses internally generate 2.5MHz clock & 12ns delay on transmitted GTX clock
+  * Sends a fixed packet
+  * Calculates the CRC on the fly and sends it
+  * CRC calculated on send ([source](https://bues.ch/cms/hacking/crcgen))
 
 ## Next Steps
 
@@ -74,17 +78,27 @@ added by HSMC card. Some useful features:
   * Handle changing transmit speed as receive speed changes
 
 * Simple RGMII TX interface
-  * Set the use of clocks for the RX_CLK and GTX_CLK
-  * Figure out how to delay the GTX_CLK appropriately
+  * Handle all 3 speeds
+  * Handle DDR output for 1000BASE-T
+  * Handle changing speeds dynamically & reconfiguring delay PLLs
   * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
     * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
-  * Handle DDR
-  * Handle all 3 speeds
+  * Use a RAM with 2048 byte-long packet slots (enough for the usual maximum frame size)
+  * Use a FIFO for queuing sends
+    * Length
+    * RAM slot to send
+    * CRC included (or not)
+    * (Figure out how to parcel out RAM slots)
+  * Add some bus for:
+    * Putting packet data into the transmit RAM slots
+    * Adding an entry to the transmit FIFO
 
 * Simple RGMII RX interface
   * Handle all 3 speeds
-* Simple CRC creator/checker added to TX/RX
-* DMA based RX/TX interface
+
+* Simulate the PHY side of the Management Interface (for reads)
+
+* Enable reduced preamble mode for Management Interface?
 
 ## User Interface
 
@@ -108,30 +122,13 @@ added by HSMC card. Some useful features:
 * Sometimes I have to send the MDIO request a few times to get it to respond
   differently
 
-### Fixed Bugs
-
-* Read data seems to give bits 14:0 in positions 15:1 and always 1 in position [0].
-  * Fixed by reading the data from the PHY at a much earlier `mdc_step` (step 1 instead
-    of step 3). 
-
-Using SignalTap, I see the actual `mdc` and `mdc_step` values:
-
-    3 0 1 2 3 0
-    _/‾‾‾\___/‾
-
-This is caused because during `mdc_step` 0 I tell `mdc` to go low, during 1,
-I tell it to go high, and so forth, but the actual change is in the
-next clock when it's loaded into the FF, rather than the current clock.
+### Recently Fixed Bugs
 
 ### Hardware Bugs
+
 * ETH0 is dead: On my DE2-115, enabling the Ethernet (RST_N to 1) on both ports
   causes ETH0 to be unreponsive when plugged in, but ETH1 reponds
   just fine and lights up 1000, DUP, RX lights.
-
-# TODO
-
-* Simulate the PHY side of the Management Interface (for reads)
-* Enable reduced preamble mode for Management Interface?
 
 
 # Notes on FPGA Resources
@@ -329,7 +326,7 @@ This is an ARP ethernet Frame
 Docs:
 * https://ftp.intel.com/Public/Pub/fpgaup/pub/Teaching_Materials/current/Tutorials/DE2-115/Using_Triple_Speed_Ethernet.pdf
 * https://people.ece.cornell.edu/land/courses/ece5760/FinalProjects/f2011/mis47_ayg6/mis47_ayg6/
-* https://www.analog.com/media/en/technical-documentation/application-notes/ee-269.pdf
+* [Great intro to Ethernet on the Wire](https://www.analog.com/media/en/technical-documentation/application-notes/ee-269.pdf)
 * https://www.allaboutcircuits.com/ip-cores/communication-controller/sgmii/
 * https://lantian.pub/en/article/modify-computer/cyclone-iv-fpga-development-bugs-resolve.lantian/
 * https://github.com/alexforencich/verilog-ethernet
@@ -342,6 +339,9 @@ Docs:
 * https://en.wikipedia.org/wiki/Media-independent_interface#cite_note-802.3-2
 * [U-boot Initialization](https://github.com/RobertCNelson/u-boot/blob/master/drivers/net/phy/marvell.c)
 
+* MDIO
+  * [Wikipedia on MDIO](https://en.wikipedia.org/wiki/Management_Data_Input/Output)
+
 * RGMII:
   * https://www.renesas.com/us/en/document/apn/guide-using-rgmii-making-ethernet-if-connection
   * [AN 477: Designing RGMII Interfaces with FPGAs and HardCopy 
@@ -353,12 +353,19 @@ Docs:
   * [Xilinx notes](https://docs.xilinx.com/r/en-US/pg160-gmii-to-rgmii/RGMII-Interface-Protocols)
   * [RGMII v2.0 Spec](https://web.archive.org/web/20160303171328/http://www.hp.com/rnd/pdfs/RGMIIv2_0_final_hp.pdf)
 
+* Marvell 88E1111
+  * [U-Boot 88E1xxx Initialization](https://github.com/RobertCNelson/u-boot/blob/master/drivers/net/phy/marvell.c)
+  * [88E1111 PHY Configuration Steps](https://community.intel.com/t5/FPGA-Wiki/Marvell-88E1111-PHY-Configuration-Steps/ta-p/735410)
+
 * Quartus
   * [Inferring RAM](https://www.intel.com/content/www/us/en/docs/programmable/683082/22-3/simple-dual-port-dual-clock-synchronous-ram.html)
   * [Constraining RGMII Clocks](https://www.intel.com/content/www/us/en/support/programmable/support-resources/design-examples/horizontal/exm-tse-rgmii-phy.html)
   * [Quartus II Clocks](https://www.eevblog.com/forum/microcontrollers/quartus-ii-clocks/)
   * [Use Global Clock Resources](https://www.intel.com/content/www/us/en/docs/programmable/683082/21-3/use-global-clock-network-resources.html)
   * [Some RGMII timing constraint examples](https://github.com/genrnd/ethond/blob/master/fpga/rgmii.sdc)
+  * [Altera AN 433: Constraining and Analyzing Source-Synchronous Interfaces](https://cdrdv2-public.intel.com/653688/an433.pdf)
+  * [Quartus Help top level v22.1](https://www.intel.com/content/www/us/en/programmable/quartushelp/22.1/index.htm#quartus/gl_quartus_welcome.htm)
+  * [Quartus Recommended HDL Coding and Design Practices](https://www.intel.com/content/www/us/en/docs/programmable/683082/22-3/recommended-hdl-coding-styles.html)
 
 Linux to keep FCS & bad CRCs
 * https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
