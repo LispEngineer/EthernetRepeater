@@ -438,6 +438,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to I2C_SDAT
 # Ethernet 0
 #============================================================
 set_location_assignment PIN_A14 -to ENETCLK_25
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to ENETCLK_25
 set_location_assignment PIN_C18 -to ENET0_TX_DATA[0]
 set_instance_assignment -name IO_STANDARD "2.5 V" -to ENET0_TX_DATA[0]
 set_location_assignment PIN_C16 -to ENET0_RX_DATA[0]
