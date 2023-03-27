@@ -366,6 +366,9 @@ Docs:
   * [Altera AN 433: Constraining and Analyzing Source-Synchronous Interfaces](https://cdrdv2-public.intel.com/653688/an433.pdf)
   * [Quartus Help top level v22.1](https://www.intel.com/content/www/us/en/programmable/quartushelp/22.1/index.htm#quartus/gl_quartus_welcome.htm)
   * [Quartus Recommended HDL Coding and Design Practices](https://www.intel.com/content/www/us/en/docs/programmable/683082/22-3/recommended-hdl-coding-styles.html)
+  * [Programmable Delays](https://www.intel.com/content/www/us/en/docs/programmable/683641/21-4/programmable-delays.html)
+    * `Delay Chain Summary` report is in Fitter -> Resource Section -> Delay Chain Summary
+    * Not sure what the `Resource Property Editor` is
 
 Linux to keep FCS & bad CRCs
 * https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
