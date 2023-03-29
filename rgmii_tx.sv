@@ -267,15 +267,25 @@ always_ff @(posedge tx_clk) begin
           d_l <= 4'b0101;
           count <= count + 1'd1;
           // No matter what I use for this count (12, 13, 14, 18, 123)
-          // it seems to accept the packet on the other end, with a
-          // length error.
+          // it seems to accept the packet on the other end correctly.
           if (count == 13) begin
             // We are sending our 7th byte, second nibble, move on to SFP
             state <= S_SFD;
             nibble <= NIBBLE_LOW;
           end
-        end // !ddr
-        // FIXME: CODE txn_ddr
+
+        end else begin // txn_ddr
+          // Send 7x 0x55
+
+          d_h <= 4'b0101;
+          d_l <= 4'b0101;
+          count <= count + 1'd1;
+          if (count == 6) begin
+            // We are sending our 7th byte, second nibble, move on to SFP
+            state <= S_SFD;
+          end
+
+        end // txn_ddr or not
 
       end
 
@@ -298,9 +308,16 @@ always_ff @(posedge tx_clk) begin
             count <= '0;
             crc <= CRC_INIT;
           end
-        end // !ddr
 
-        // FIXME: CODE txn_ddr
+        end else begin // switch to ddr
+          // Send 0xD5, low nibble first
+          d_h <= 4'b0101;
+          d_l <= 4'b1101;
+          state <= S_DATA;
+          count <= '0;
+          crc <= CRC_INIT;
+        end
+
       end
 
       S_DATA: begin ////////////////////////////////////////////////////
@@ -323,21 +340,38 @@ always_ff @(posedge tx_clk) begin
           if (nibble) begin
             // Second half of our byte
             count <= count + 1'd1;
-            // FIXME: For now we send CRC as part of data
+            // Are we done with data?
             if (count == LAST_DATA_BYTE) begin
               state <= S_FCS;
               count <= 0;
             end
           end
-        end // !txn_ddr
 
-        // FIXME: CODE txn_ddr
+        end else begin // txn_ddr
+
+          // Send our data, low nibble first (high)
+          d_h <= current_data[3:0];
+          d_l <= current_data[7:4];
+          crc <= next_crc; // Get the next CRC value for the full data byte
+
+          // Handle advancing state
+          nibble <= ~nibble;
+          count <= count + 1'd1;
+          // Are we done sending?
+          if (count == LAST_DATA_BYTE) begin
+            state <= S_FCS;
+            count <= 0;
+          end
+
+        end
+
       end
 
       S_FCS: begin ////////////////////////////////////////////////////
         // We are going to send the calculated CRC, least significant byte
         // first, and least significant nibble of each byte first.
-        // So we will send 8 nibbles from the bottom to the top
+        // So we will send 8 nibbles from the bottom to the top in non-DDR
+        // or 4 bytes with LSB in the High of the transmit clock.
 
         if (!txn_ddr) begin
 
@@ -352,9 +386,17 @@ always_ff @(posedge tx_clk) begin
             state <= S_IDLE;
           end
 
-        end // !txn_ddr
+        end else begin // txn_ddr
 
-        // FIXME: Code txn_ddr
+          {d_l, d_h} <= crc[(count << 2) +:8] ^ 8'hFF; // Add final XOR
+
+          count <= count + 1'd1;
+          if (count == 3) begin
+            // We are sending our final CRC byte, so we're done
+            state <= S_IDLE;
+          end
+
+        end
 
         // Let's stay busy until we're IN the idle state
         // Let's keep tx_en until we're IN the idle state

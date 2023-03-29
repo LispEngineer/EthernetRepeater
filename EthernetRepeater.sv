@@ -463,8 +463,10 @@ end
 
 logic clock_eth_tx, clock_eth_tx_shifted, clock_eth_tx_shifted2, clock_eth_tx_lock;
 
-`define SPEED_100
+`define SPEED_1000
+
 `ifdef SPEED_10
+`define USE_DDR 1'b0
 pll_50_to_2p5_with_shift	pll_50_to_2p5_with_shift_inst (
 	.areset('0),
 	.inclk0(CLOCK_50),
@@ -475,6 +477,8 @@ pll_50_to_2p5_with_shift	pll_50_to_2p5_with_shift_inst (
 );
 
 `elsif SPEED_100
+
+`define USE_DDR 1'b0
 // FIXME: Make this a 10ns shift
 pll_50_to_25_with_shift	pll_50_to_25_with_shift_inst (
 	.areset('0),
@@ -484,6 +488,19 @@ pll_50_to_25_with_shift	pll_50_to_25_with_shift_inst (
 	.c2(clock_eth_tx_shifted2), // 90 degree shift
 	.locked(clock_eth_tx_lock)
 );
+
+`elsif SPEED_1000
+
+`define USE_DDR 1'b1
+pll_50_to_125_with_shift	pll_50_to_125_with_shift_inst (
+	.areset('0),
+	.inclk0(CLOCK_50),
+	.c0(clock_eth_tx),
+	.c1(clock_eth_tx_shifted2), // 2ns shift
+	.c2(clock_eth_tx_shifted), // 90 degree shift - should ALSO be 2ns
+	.locked(clock_eth_tx_lock)
+);
+
 `endif
 
 // Use a PLL to get a 90⁰ delayed version of the RX clock
@@ -511,7 +528,7 @@ logic send_busy;
 rgmii_tx rgmii_tx1 (
   .tx_clk(clock_eth_tx),
   .reset('0),
-  .ddr_tx('0),
+  .ddr_tx(`USE_DDR), // 0 for 10/100, 1 for 1000
 
   .activate(send_activate),
   .busy(send_busy),

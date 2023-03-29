@@ -42,7 +42,7 @@ logic [31:0] crc_final; // XOR'd with the final value
 rgmii_tx dut (
   .tx_clk(clk),
   .reset('0),
-  .ddr_tx('0),
+  .ddr_tx('1), // Test with DDR now
   .activate(activate),
   .busy(busy),
   .gtx_clk(gtx_clk),
