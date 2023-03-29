@@ -4,11 +4,14 @@ Copyright ⓒ 2023 Douglas P. Fields, Jr. All Rights Reserved.
 
 # Current Capabilities
 
-First version: Just send a fixed packet.
+* Send a fixed MII packet with calculated CRC
+
+## TODO
 
 * [Interpacket Gaps](https://en.wikipedia.org/wiki/Interpacket_gap)
-* [SystemVerilog Streaming Operators](https://www.amiq.com/consulting/2017/05/29/how-to-pack-data-using-systemverilog-streaming-operators/#reverse_bits)
-  * Unfortunately [Quartus](https://www.intel.com/content/www/us/en/programmable/quartushelp/17.0/mapIdTopics/jka1465580570693.htm) does not support these
+* DDR (RGMII) data sending
+
+## Notes
 
 Convert a file of hex bytes (with possible leading spaces) into a ROM:
 
@@ -21,7 +24,11 @@ Convert a file of hex bytes (with possible leading spaces) into a ROM:
 * Send one nibble each cycle (not two) - same on H and L of clock
 * For Preamble & SFD:
   * Send the exact data as shown in 802.3-2022 Table 22-3on TXD[0:3]
-  * This is erversed from the bit sequence
+  * This is reversed from the bit sequence
+  * See [Ethernet frame](https://en.wikipedia.org/wiki/Ethernet_frame) section
+    Preamble and start frame delimiter, which shows that the bits (1010 ... 1010 1011)
+    are actually hex values 0x55 .. 0x55 0xD5. I wish the other specs had shared this
+    tidbit earlier, would have saved a lot of sadness.
 * For data, send the lower nibble first, with the txd bits in same order as data bits
 * Overall, this is not documented clearly or perfectly anywhere.
   * Specifically, it seems the order of TXD bits is opposite in preamble/SFD

@@ -30,6 +30,7 @@ Do all these things without a soft processor.
   * Display information on VGA or DVI
   * Send packet information via USB UART
 
+
 ## Hardware
 
 **[Terasic DE2-115](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=139&No=502&PartNo=4)**
@@ -95,10 +96,17 @@ added by HSMC card. Some useful features:
 
 * Simple RGMII RX interface
   * Handle all 3 speeds
-
-* Simulate the PHY side of the Management Interface (for reads)
+  * Receive frame bytes into a RAM buffer
+    * Rotate receives through multiple buffers
+    * Check frame CRC
+    * Include flags on the received frames
+  * Handle non-nibble/byte aligned receives (?)
 
 * Enable reduced preamble mode for Management Interface?
+
+* Simulate the PHY side of the Management Interface (for reads)
+* Simulate the MAC/PHY side of TX/RX
+
 
 ## User Interface
 
@@ -116,11 +124,16 @@ added by HSMC card. Some useful features:
 
 * During Management Interface idle periods - should I continue to run MDC?
   * Seems unnecessary and a waste of energy
+  
+* Can we get non-aligned packets?
+  * Can we get extra bits before the SFD such that the 1011 comes non-nibble
+    or non-byte aligned?
 
 ## Known Bugs
 
 * Sometimes I have to send the MDIO request a few times to get it to respond
-  differently
+  differently. I haven't looked much into it. It could be a switch/button problem
+  or an actual internal bug or a PHY limitation?
 
 ### Recently Fixed Bugs
 
