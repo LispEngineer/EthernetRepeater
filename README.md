@@ -60,8 +60,9 @@ added by HSMC card. Some useful features:
 * Management Interface - read & write enabled
   * Visually simulated in Questa
   * Tested on real PHY for reading
-* RGMII Transmit Capability at 10BASE-T speeds
-  * Uses internally generate 2.5MHz clock & 12ns delay on transmitted GTX clock
+* RGMII Transmit Capability
+  * Works at 10BASE-T: Uses PLL generated 2.5MHz clock & 12ns delay on transmitted GTX clock
+  * Works at 100BASE-T: Uses PLL generated 25MHz clock & 12ns delay on transmitted GTX clock
   * Sends a fixed packet
   * Calculates the CRC on the fly and sends it
   * CRC calculated on send ([source](https://bues.ch/cms/hacking/crcgen))
@@ -78,8 +79,7 @@ added by HSMC card. Some useful features:
   * Handle changing transmit speed as receive speed changes
 
 * Simple RGMII TX interface
-  * Handle all 3 speeds
-  * Handle DDR output for 1000BASE-T
+  * Handle 1000BASE-T and DDR output for 1000BASE-T
   * Handle changing speeds dynamically & reconfiguring delay PLLs
   * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
     * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
