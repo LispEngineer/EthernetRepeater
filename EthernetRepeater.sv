@@ -461,19 +461,34 @@ end
 // At startup, Register 20.1 is 0 (no delay for TXD outputs)
 // and Register 20.7 is 0 (no added delay for RX_CLK)
 
-logic clock_2p5, clock_2p5_12ns, clock_2p5_90deg;
-logic clock_2p5_locked;
+logic clock_eth_tx, clock_eth_tx_shifted, clock_eth_tx_shifted2, clock_eth_tx_lock;
 
+`define SPEED_100
+`ifdef SPEED_10
 pll_50_to_2p5_with_shift	pll_50_to_2p5_with_shift_inst (
 	.areset('0),
 	.inclk0(CLOCK_50),
-	.c0(clock_2p5),
-	.c1(clock_2p5_12ns),
-	.c2(clock_2p5_90deg),
-	.locked(clock_2p5_locked)
+	.c0(clock_eth_tx),
+	.c1(clock_eth_tx_shifted), // 12ns shift
+	.c2(clock_eth_tx_shifted2), // 90 degree shift
+	.locked(clock_eth_tx_lock)
 );
 
-// Use a PLL to get a 90⁰ delayed version of the clock
+`elsif SPEED_100
+// FIXME: Make this a 10ns shift
+pll_50_to_25_with_shift	pll_50_to_25_with_shift_inst (
+	.areset('0),
+	.inclk0(CLOCK_50),
+	.c0(clock_eth_tx),
+	.c1(clock_eth_tx_shifted), // 12ns shift
+	.c2(clock_eth_tx_shifted2), // 90 degree shift
+	.locked(clock_eth_tx_lock)
+);
+`endif
+
+// Use a PLL to get a 90⁰ delayed version of the RX clock
+// which in practice works at 2.5 MHz input even though the
+// minimum input to the PLL is 5 MHz
 /*
 logic pll_locked, gtx_clk_90;
 
@@ -494,7 +509,7 @@ logic send_busy;
 // This will only work with 10BASE-T now, since the
 // clock speed doesn't change to adjust with the ENET1_RX_CLK.
 rgmii_tx rgmii_tx1 (
-  .tx_clk(clock_2p5),
+  .tx_clk(clock_eth_tx),
   .reset('0),
   .ddr_tx('0),
 
@@ -509,9 +524,10 @@ rgmii_tx rgmii_tx1 (
 );
 
 assign ENET1_TX_ER = '0;
-// We are getting framing errors, let's try different clocks...
-assign ENET1_GTX_CLK = clock_2p5_12ns; // gtx_clk; // clock_2p5_90deg; // clock_2p5_12ns; // gtx_clk_90;
-assign LEDG[7] = clock_2p5_locked; // pll_locked;
+// For 10/100 use a 12ns shifted clock. (10 would be better for 100)
+// For 1000, use 1 2ns shifted clock (90⁰ shift for 125 MHz)
+assign ENET1_GTX_CLK = clock_eth_tx_shifted;
+assign LEDG[7] = clock_eth_tx_lock; // pll_locked;
 
 // Set up our DDR output pins for RGMII transmit
 ddr_output_4 ddr_output4_rgmii1_tx_data (
