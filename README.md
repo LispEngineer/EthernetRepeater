@@ -64,9 +64,10 @@ added by HSMC card. Some useful features:
 * RGMII Transmit Capability
   * Works at 10BASE-T: Uses PLL generated 2.5MHz clock & 12ns delay on transmitted GTX clock
   * Works at 100BASE-T: Uses PLL generated 25MHz clock & 12ns delay on transmitted GTX clock
+  * Works at 1000BASE-T: Uses PLL generated 125MHz clock & 2ns delay on transmitted GTX clock
+    * And sends data on TXD with DDR encoding
   * Sends a fixed packet
-  * Calculates the CRC on the fly and sends it
-  * CRC calculated on send ([source](https://bues.ch/cms/hacking/crcgen))
+    * Calculates the CRC on the fly and sends it, using [generated HDL](https://bues.ch/cms/hacking/crcgen)
 
 ## Next Steps
 
@@ -80,7 +81,6 @@ added by HSMC card. Some useful features:
   * Handle changing transmit speed as receive speed changes
 
 * Simple RGMII TX interface
-  * Handle 1000BASE-T and DDR output for 1000BASE-T
   * Handle changing speeds dynamically & reconfiguring delay PLLs
   * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
     * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
