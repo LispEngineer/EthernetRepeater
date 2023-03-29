@@ -388,7 +388,7 @@ always_ff @(posedge tx_clk) begin
 
         end else begin // txn_ddr
 
-          {d_l, d_h} <= crc[(count << 2) +:8] ^ 8'hFF; // Add final XOR
+          {d_l, d_h} <= crc[(count << 3) +:8] ^ 8'hFF; // Add final XOR
 
           count <= count + 1'd1;
           if (count == 3) begin
