@@ -382,6 +382,9 @@ Docs:
   * [Programmable Delays](https://www.intel.com/content/www/us/en/docs/programmable/683641/21-4/programmable-delays.html)
     * `Delay Chain Summary` report is in Fitter -> Resource Section -> Delay Chain Summary
     * Not sure what the `Resource Property Editor` is
+  * [Clock Multiplexing](https://www.intel.com/content/www/us/en/docs/programmable/683082/22-3/clock-multiplexing.html)
+  * [Reconfigurable PLLs - example](https://www.reddit.com/r/FPGA/comments/mubxlb/altera_cyclone_iv_altpll_reconfig/)
+  * [PLL reconfiguration AN-661](https://www.intel.com/content/www/us/en/docs/programmable/683640/current/implementing-fractional-pll-reconfiguration-33682.html)
 
 Linux to keep FCS & bad CRCs
 * https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
@@ -529,3 +532,11 @@ rising edge of MDC."
   * Link up (bit 2)
   * No Jabber
   * Extended register capability - yes
+
+
+
+# Misc Quartus Notes
+
+* VS Code as external editor: `"C:\Users\Doug\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd" --goto %f:%l`
+  * You cannot insert HDL template without using the internal editor, so sometimes this needs to change
+* Questa directory: `C:/bin/fpga/intelFPGA_lite/21.1/questa_fse/win64`
