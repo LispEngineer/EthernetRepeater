@@ -659,6 +659,11 @@ always_ff @(posedge CLOCK_50) begin
   end // lcd_available
 end
 
+// FIXME: We probably have to do a full manual initialization of
+// the LCD module before we can write characters.
+// We will have to write a driver that does the initialization,
+// then passes through the rest of the commands.
+
 lcd_module lcd_module (
   .clk(CLOCK_50),
   .reset('0),

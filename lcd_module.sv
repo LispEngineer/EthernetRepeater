@@ -43,17 +43,21 @@ module lcd_module #(
   // Interface to this module
   output logic       busy,
   input  logic       activate,
-  input  logic [7:0] char // Character to shift out (the only current operation)     
+  input  logic [7:0] char // Character to shift out (the only current operation)
+
+  // TODO: Add:
+  // 1. input for final delay override (if non-zero)
+  // 2. input for instruction/data  
 );
 
 initial busy = '0;
 initial data_e = '0;
 
-localparam S_IDLE = 4'd0,
-           S_PREP = 4'd1, // Set up the outputs, wait
-           S_SET_EN = 4'd2, // Turn on enable, wait
+localparam S_IDLE     = 4'd0,
+           S_PREP     = 4'd1, // Set up the outputs, wait
+           S_SET_EN   = 4'd2, // Turn on enable, wait
            S_TRANS_EN = 4'd3, // Turn off enable, wait
-           S_DELAY = 4'd4; // Wait for the command to finish
+           S_DELAY    = 4'd4; // Wait for the command to finish
 logic [3:0] state = S_IDLE;
 
 // Our counter
@@ -87,7 +91,9 @@ always_ff @(posedge clk) begin
         // Set the inputs to the physical LCD module
         data_e <= '1;
         data_o <= char;
+        // data_o <= 8'h01; // Clear screen
         rs <= '1; // Sending data, not instruction
+        // rs <= '0; // Send instruction
         rw <= '0; // Writing data, not reading
         count[0] <= 1'b1;
       end else if (count == PREP_COUNT) begin
