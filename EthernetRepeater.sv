@@ -181,31 +181,77 @@ module EthernetRepeater(
   inout  wire  [35:0] GPIO,
 
   //////////// HSMC, HSMC connect to DVI - FullHD TX/RX //////////
-  output logic        DVI_EDID_WP,
-  input  logic        DVI_RX_CLK,
-  input  logic  [3:1] DVI_RX_CTL,
-  input  logic [23:0] DVI_RX_D,
-  inout  wire         DVI_RX_DDCSCL,
-  inout  wire         DVI_RX_DDCSDA,
-  input  logic        DVI_RX_DE,
-  input  logic        DVI_RX_HS,
-  input  logic        DVI_RX_SCDT,
-  input  logic        DVI_RX_VS,
-  output logic        DVI_TX_CLK,
-  output logic  [3:1] DVI_TX_CTL,
-  output logic [23:0] DVI_TX_D,
-  inout  wire         DVI_TX_DDCSCL,
-  inout  wire         DVI_TX_DDCSDA,
-  output logic        DVI_TX_DE,
-  output logic        DVI_TX_DKEN,
-  output logic        DVI_TX_HS,
-  output logic        DVI_TX_HTPLG,
-  output logic        DVI_TX_ISEL,
-  output logic        DVI_TX_MSEN,
-  output logic        DVI_TX_PD_N,
-  output logic        DVI_TX_SCL,
-  inout  wire         DVI_TX_SDA,
-  output logic        DVI_TX_VS
+  // output logic        DVI_EDID_WP,
+  // input  logic        DVI_RX_CLK,
+  // input  logic  [3:1] DVI_RX_CTL,
+  // input  logic [23:0] DVI_RX_D,
+  // inout  wire         DVI_RX_DDCSCL,
+  // inout  wire         DVI_RX_DDCSDA,
+  // input  logic        DVI_RX_DE,
+  // input  logic        DVI_RX_HS,
+  // input  logic        DVI_RX_SCDT,
+  // input  logic        DVI_RX_VS,
+  // output logic        DVI_TX_CLK,
+  // output logic  [3:1] DVI_TX_CTL,
+  // output logic [23:0] DVI_TX_D,
+  // inout  wire         DVI_TX_DDCSCL,
+  // inout  wire         DVI_TX_DDCSDA,
+  // output logic        DVI_TX_DE,
+  // output logic        DVI_TX_DKEN,
+  // output logic        DVI_TX_HS,
+  // output logic        DVI_TX_HTPLG,
+  // output logic        DVI_TX_ISEL,
+  // output logic        DVI_TX_MSEN,
+  // output logic        DVI_TX_PD_N,
+  // output logic        DVI_TX_SCL,
+  // inout  wire         DVI_TX_SDA,
+  // output logic        DVI_TX_VS
+
+	//////////// HSMC, HSMC connect to NET - 10/100/1000 Ethernet //////////
+	output logic       NET2_GTX_CLK,
+	input  logic       NET2_INTN,
+	input  logic       NET2_LINK1000,
+	output logic       NET2_MDC,
+	inout  wire        NET2_MDIO,
+	output logic       NET2_RESETN,
+	input  logic       NET2_RX_CLK,
+	input  logic       NET2_RX_COL,
+	input  logic       NET2_RX_CRS,
+	input  logic       NET2_RX_DV,
+	input  logic       NET2_RX_ER,
+	input  logic [7:0] NET2_RX_D,
+	output logic [7:0] NET2_TX_D,
+	input  logic       NET2_S_CLKN,
+	input  logic       NET2_S_CLKP,
+	input  logic       NET2_S_RX_N,
+	input  logic       NET2_S_RX_P,
+	output logic       NET2_S_TX_N,
+	output logic       NET2_S_TX_P,
+	input  logic       NET2_TX_CLK,
+	output logic       NET2_TX_EN,
+	output logic       NET2_TX_ER,
+	output logic       NET3_GTX_CLK,
+	input  logic       NET3_INTN,
+	input  logic       NET3_LINK1000,
+	output logic       NET3_MDC,
+	inout  wire        NET3_MDIO,
+	output logic       NET3_RESETN,
+	input  logic       NET3_RX_CLK,
+	input  logic       NET3_RX_COL,
+	input  logic       NET3_RX_CRS,
+	input  logic       NET3_RX_DV,
+	input  logic       NET3_RX_ER,
+	input  logic [7:0] NET3_RX_D,
+	output logic [7:0] NET3_TX_D,
+	input  logic       NET3_S_CLKN,
+	input  logic       NET3_S_CLKP,
+	input  logic       NET3_S_RX_N,
+	input  logic       NET3_S_RX_P,
+	output logic       NET3_S_TX_N,
+	output logic       NET3_S_TX_P,
+	input  logic       NET3_TX_CLK,
+	output logic       NET3_TX_EN,
+	output logic       NET3_TX_ER  
 );
 
 // Zero out unused outputs
@@ -220,19 +266,19 @@ always_comb begin
   HEX5 = '1;
   HEX6 = '1;
   HEX7 = '1;
-  DVI_TX_CTL = '0;
-  DVI_TX_D = '0;
-  DVI_TX_CLK = '0;
-  DVI_TX_DE = '0;
-  DVI_TX_DKEN = '0;
-  DVI_TX_HS = '0;
-  DVI_TX_HTPLG = '0;
-  DVI_TX_ISEL = '0;
-  DVI_TX_MSEN = '0;
-  DVI_TX_PD_N = '0;
-  DVI_TX_SCL = '0;
-  DVI_TX_VS = '0;
-  DVI_EDID_WP = '0;
+  // DVI_TX_CTL = '0;
+  // DVI_TX_D = '0;
+  // DVI_TX_CLK = '0;
+  // DVI_TX_DE = '0;
+  // DVI_TX_DKEN = '0;
+  // DVI_TX_HS = '0;
+  // DVI_TX_HTPLG = '0;
+  // DVI_TX_ISEL = '0;
+  // DVI_TX_MSEN = '0;
+  // DVI_TX_PD_N = '0;
+  // DVI_TX_SCL = '0;
+  // DVI_TX_VS = '0;
+  // DVI_EDID_WP = '0;
   LCD_BLON = '0; // Turn Backlight on? Shouldn't do anything
   LCD_EN = '0;
   LCD_RS = '0;
@@ -317,11 +363,11 @@ always_comb begin
   SRAM_DQ = 'z;
   FL_DQ = 'z;
   GPIO = 'z;
-  DVI_RX_DDCSCL = 'z;
-  DVI_RX_DDCSDA = 'z;
-  DVI_TX_DDCSCL = 'z;
-  DVI_TX_DDCSDA = 'z;
-  DVI_TX_SDA = 'z;
+  // DVI_RX_DDCSCL = 'z;
+  // DVI_RX_DDCSDA = 'z;
+  // DVI_TX_DDCSCL = 'z;
+  // DVI_TX_DDCSDA = 'z;
+  // DVI_TX_SDA = 'z;
 `endif
 end
 

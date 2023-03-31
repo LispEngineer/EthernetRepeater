@@ -386,6 +386,9 @@ Docs:
   * [Reconfigurable PLLs - example](https://www.reddit.com/r/FPGA/comments/mubxlb/altera_cyclone_iv_altpll_reconfig/)
   * [PLL reconfiguration AN-661](https://www.intel.com/content/www/us/en/docs/programmable/683640/current/implementing-fractional-pll-reconfiguration-33682.html)
 
+* [ETHERNET-HSMC](https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=71&No=355&PartNo=2#contents)
+
+
 Linux to keep FCS & bad CRCs
 * https://stackoverflow.com/questions/22101650/how-can-i-receive-the-wrong-ethernet-frames-and-disable-the-crc-fcs-calcul
 
@@ -491,6 +494,37 @@ Std Table 22-6 lists the registers.
 minimum of 10 ns of hold time referenced to the rising edge of MDC"
 * "When the MDIO signal is sourced by the PHY, it is sampled by the STA synchronously with respect to the
 rising edge of MDC."
+
+## ETHERNET-HSMC Card
+
+Schematic says "RGMII Mode"
+* CONFIG 0 - RX      010   PHY_ADR[2:0]
+* CONFIG 1 - LINK10  110   PHY_ADR[4:3] and ENA_PAUSE; PHY_ADR[6:5] fixed 10
+* CONFIG 2 - VCC     111   ANEG[3:1]
+* CONFIG 3 - TX      001   ANEG[0], ENA_XC, DIS_125
+* CONFIG 4 - DUPLEX  011   HWCFG_MODE[2:0]
+* CONFIG 5 - VCC     111   DIS_FC, DIS_SLEEP, HWCFG_MODE[3]
+* CONFIG 6 - GND     000   SEL_TWSI, INT_POL, 75/50 Ohm
+* PHYADR     = 10010 - PHY Address
+* ENA_PAUSE  = 1     - Enable Pause
+* ANEG       = 1110  - (Copper) Auto-neg, advertise all capabilities, prefer Master
+* ENA_XC     = 0     - Disable Crossover
+* DIS_125    = 1     - Disable 125MHz clock
+* HWCFG_MODE = 1011  - RGMII/Modified MII to copper (Table 28)
+* DIS_FC     = 1     - Disable fiber/copper auto-select
+* DIS_SLEEP  = 1     - Disable energy detect
+* SEL_TWSI   = 0     - Select MDC/MDIO interface
+* INT_POL    = 0     - Interrupt poliarity - INTn is active HIGH
+* 75_50_OHM  = 0     - 50 ohm termination for fiber
+
+The `HWCFG_MODE` could be changed
+* Register 27 Bits 3:0 (Table 28)
+  * 0000 = SGMII with Clock with SGMII Auto-Neg to copper
+  * 0100 = SGMII without Clock with SGMII Auto-Neg to copper
+  * 1011 = RGMII/Modified MII to Copper (Hard reset default)
+  * 1111 = GMII/MII to copper
+  * After changing, needs a soft reset
+
 
 
 ## Experimental learnings with 88E1111

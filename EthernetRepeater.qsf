@@ -942,156 +942,306 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[35]
 #============================================================
 # HSMC, HSMC connect to DVI - FullHD TX/RX
 #============================================================
-set_location_assignment PIN_AE26 -to DVI_RX_D[0]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[0]
-set_location_assignment PIN_AE28 -to DVI_RX_D[14]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[14]
-set_location_assignment PIN_AE27 -to DVI_RX_D[1]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[1]
-set_location_assignment PIN_AF27 -to DVI_RX_D[15]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[15]
-set_location_assignment PIN_D27 -to DVI_RX_D[2]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[2]
-set_location_assignment PIN_F24 -to DVI_RX_D[13]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[13]
-set_location_assignment PIN_D28 -to DVI_RX_D[3]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[3]
-set_location_assignment PIN_F25 -to DVI_RX_D[12]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[12]
-set_location_assignment PIN_E27 -to DVI_RX_D[4]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[4]
-set_location_assignment PIN_D26 -to DVI_RX_D[11]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[11]
-set_location_assignment PIN_E28 -to DVI_RX_D[5]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[5]
-set_location_assignment PIN_C27 -to DVI_RX_D[10]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[10]
-set_location_assignment PIN_F27 -to DVI_RX_D[6]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[6]
-set_location_assignment PIN_F26 -to DVI_RX_D[9]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[9]
-set_location_assignment PIN_F28 -to DVI_RX_D[7]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[7]
-set_location_assignment PIN_E26 -to DVI_RX_D[8]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[8]
-set_location_assignment PIN_G27 -to DVI_RX_CTL[1]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CTL[1]
-set_location_assignment PIN_G25 -to DVI_RX_D[23]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[23]
-set_location_assignment PIN_G28 -to DVI_RX_HS
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_HS
-set_location_assignment PIN_G26 -to DVI_RX_D[22]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[22]
-set_location_assignment PIN_K27 -to DVI_RX_VS
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_VS
-set_location_assignment PIN_H25 -to DVI_RX_D[21]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[21]
-set_location_assignment PIN_K28 -to DVI_RX_DE
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_DE
-set_location_assignment PIN_H26 -to DVI_RX_D[20]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[20]
-set_location_assignment PIN_M27 -to DVI_RX_CTL[3]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CTL[3]
-set_location_assignment PIN_K25 -to DVI_RX_D[19]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[19]
-set_location_assignment PIN_M28 -to DVI_RX_CTL[2]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CTL[2]
-set_location_assignment PIN_K26 -to DVI_RX_D[18]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[18]
-set_location_assignment PIN_K21 -to DVI_RX_DDCSDA
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_DDCSDA
-set_location_assignment PIN_L23 -to DVI_RX_D[17]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[17]
-set_location_assignment PIN_K22 -to DVI_RX_DDCSCL
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_DDCSCL
-set_location_assignment PIN_L24 -to DVI_RX_D[16]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[16]
-set_location_assignment PIN_H23 -to DVI_EDID_WP
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_EDID_WP
-set_location_assignment PIN_M25 -to DVI_RX_SCDT
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_SCDT
-set_location_assignment PIN_M26 -to DVI_TX_D[17]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[17]
-set_location_assignment PIN_G23 -to DVI_TX_D[16]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[16]
-set_location_assignment PIN_J27 -to DVI_RX_CLK
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CLK
-set_location_assignment PIN_J23 -to DVI_TX_D[12]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[12]
-set_location_assignment PIN_R25 -to DVI_TX_D[18]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[18]
-set_location_assignment PIN_J24 -to DVI_TX_D[13]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[13]
-set_location_assignment PIN_R26 -to DVI_TX_D[19]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[19]
-set_location_assignment PIN_P27 -to DVI_TX_D[14]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[14]
-set_location_assignment PIN_T25 -to DVI_TX_D[20]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[20]
-set_location_assignment PIN_P28 -to DVI_TX_D[15]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[15]
-set_location_assignment PIN_T26 -to DVI_TX_D[21]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[21]
-set_location_assignment PIN_J25 -to DVI_TX_D[11]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[11]
-set_location_assignment PIN_U25 -to DVI_TX_D[22]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[22]
-set_location_assignment PIN_J26 -to DVI_TX_D[10]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[10]
-set_location_assignment PIN_U26 -to DVI_TX_D[23]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[23]
-set_location_assignment PIN_L27 -to DVI_TX_D[9]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[9]
-set_location_assignment PIN_L21 -to DVI_TX_DKEN
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DKEN
-set_location_assignment PIN_L28 -to DVI_TX_D[8]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[8]
-set_location_assignment PIN_L22 -to DVI_TX_HS
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_HS
-set_location_assignment PIN_V25 -to DVI_TX_D[7]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[7]
-set_location_assignment PIN_N25 -to DVI_TX_VS
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_VS
-set_location_assignment PIN_V26 -to DVI_TX_D[6]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[6]
-set_location_assignment PIN_N26 -to DVI_TX_CTL[3]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CTL[3]
-set_location_assignment PIN_R27 -to DVI_TX_D[5]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[5]
-set_location_assignment PIN_P25 -to DVI_TX_CTL[2]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CTL[2]
-set_location_assignment PIN_R28 -to DVI_TX_D[4]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[4]
-set_location_assignment PIN_P26 -to DVI_TX_CTL[1]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CTL[1]
-set_location_assignment PIN_U27 -to DVI_TX_D[3]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[3]
-set_location_assignment PIN_P21 -to DVI_TX_HTPLG
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_HTPLG
-set_location_assignment PIN_U28 -to DVI_TX_D[2]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[2]
-set_location_assignment PIN_R21 -to DVI_TX_PD_N
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_PD_N
-set_location_assignment PIN_V27 -to DVI_TX_D[1]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[1]
-set_location_assignment PIN_R22 -to DVI_TX_MSEN
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_MSEN
-set_location_assignment PIN_V28 -to DVI_TX_D[0]
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[0]
-set_location_assignment PIN_R23 -to DVI_TX_ISEL
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_ISEL
-set_location_assignment PIN_U22 -to DVI_TX_DE
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DE
-set_location_assignment PIN_T21 -to DVI_TX_SDA
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_SDA
-set_location_assignment PIN_V22 -to DVI_TX_DDCSDA
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DDCSDA
-set_location_assignment PIN_T22 -to DVI_TX_SCL
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_SCL
-set_location_assignment PIN_V23 -to DVI_TX_CLK
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CLK
-set_location_assignment PIN_V24 -to DVI_TX_DDCSCL
-set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DDCSCL
+#set_location_assignment PIN_AE26 -to DVI_RX_D[0]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[0]
+#set_location_assignment PIN_AE28 -to DVI_RX_D[14]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[14]
+#set_location_assignment PIN_AE27 -to DVI_RX_D[1]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[1]
+#set_location_assignment PIN_AF27 -to DVI_RX_D[15]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[15]
+#set_location_assignment PIN_D27 -to DVI_RX_D[2]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[2]
+#set_location_assignment PIN_F24 -to DVI_RX_D[13]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[13]
+#set_location_assignment PIN_D28 -to DVI_RX_D[3]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[3]
+#set_location_assignment PIN_F25 -to DVI_RX_D[12]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[12]
+#set_location_assignment PIN_E27 -to DVI_RX_D[4]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[4]
+#set_location_assignment PIN_D26 -to DVI_RX_D[11]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[11]
+#set_location_assignment PIN_E28 -to DVI_RX_D[5]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[5]
+#set_location_assignment PIN_C27 -to DVI_RX_D[10]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[10]
+#set_location_assignment PIN_F27 -to DVI_RX_D[6]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[6]
+#set_location_assignment PIN_F26 -to DVI_RX_D[9]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[9]
+#set_location_assignment PIN_F28 -to DVI_RX_D[7]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[7]
+#set_location_assignment PIN_E26 -to DVI_RX_D[8]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[8]
+#set_location_assignment PIN_G27 -to DVI_RX_CTL[1]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CTL[1]
+#set_location_assignment PIN_G25 -to DVI_RX_D[23]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[23]
+#set_location_assignment PIN_G28 -to DVI_RX_HS
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_HS
+#set_location_assignment PIN_G26 -to DVI_RX_D[22]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[22]
+#set_location_assignment PIN_K27 -to DVI_RX_VS
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_VS
+#set_location_assignment PIN_H25 -to DVI_RX_D[21]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[21]
+#set_location_assignment PIN_K28 -to DVI_RX_DE
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_DE
+#set_location_assignment PIN_H26 -to DVI_RX_D[20]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[20]
+#set_location_assignment PIN_M27 -to DVI_RX_CTL[3]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CTL[3]
+#set_location_assignment PIN_K25 -to DVI_RX_D[19]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[19]
+#set_location_assignment PIN_M28 -to DVI_RX_CTL[2]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CTL[2]
+#set_location_assignment PIN_K26 -to DVI_RX_D[18]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[18]
+#set_location_assignment PIN_K21 -to DVI_RX_DDCSDA
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_DDCSDA
+#set_location_assignment PIN_L23 -to DVI_RX_D[17]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[17]
+#set_location_assignment PIN_K22 -to DVI_RX_DDCSCL
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_DDCSCL
+#set_location_assignment PIN_L24 -to DVI_RX_D[16]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_D[16]
+#set_location_assignment PIN_H23 -to DVI_EDID_WP
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_EDID_WP
+#set_location_assignment PIN_M25 -to DVI_RX_SCDT
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_SCDT
+#set_location_assignment PIN_M26 -to DVI_TX_D[17]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[17]
+#set_location_assignment PIN_G23 -to DVI_TX_D[16]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[16]
+#set_location_assignment PIN_J27 -to DVI_RX_CLK
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_RX_CLK
+#set_location_assignment PIN_J23 -to DVI_TX_D[12]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[12]
+#set_location_assignment PIN_R25 -to DVI_TX_D[18]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[18]
+#set_location_assignment PIN_J24 -to DVI_TX_D[13]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[13]
+#set_location_assignment PIN_R26 -to DVI_TX_D[19]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[19]
+#set_location_assignment PIN_P27 -to DVI_TX_D[14]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[14]
+#set_location_assignment PIN_T25 -to DVI_TX_D[20]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[20]
+#set_location_assignment PIN_P28 -to DVI_TX_D[15]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[15]
+#set_location_assignment PIN_T26 -to DVI_TX_D[21]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[21]
+#set_location_assignment PIN_J25 -to DVI_TX_D[11]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[11]
+#set_location_assignment PIN_U25 -to DVI_TX_D[22]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[22]
+#set_location_assignment PIN_J26 -to DVI_TX_D[10]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[10]
+#set_location_assignment PIN_U26 -to DVI_TX_D[23]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[23]
+#set_location_assignment PIN_L27 -to DVI_TX_D[9]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[9]
+#set_location_assignment PIN_L21 -to DVI_TX_DKEN
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DKEN
+#set_location_assignment PIN_L28 -to DVI_TX_D[8]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[8]
+#set_location_assignment PIN_L22 -to DVI_TX_HS
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_HS
+#set_location_assignment PIN_V25 -to DVI_TX_D[7]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[7]
+#set_location_assignment PIN_N25 -to DVI_TX_VS
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_VS
+#set_location_assignment PIN_V26 -to DVI_TX_D[6]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[6]
+#set_location_assignment PIN_N26 -to DVI_TX_CTL[3]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CTL[3]
+#set_location_assignment PIN_R27 -to DVI_TX_D[5]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[5]
+#set_location_assignment PIN_P25 -to DVI_TX_CTL[2]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CTL[2]
+#set_location_assignment PIN_R28 -to DVI_TX_D[4]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[4]
+#set_location_assignment PIN_P26 -to DVI_TX_CTL[1]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CTL[1]
+#set_location_assignment PIN_U27 -to DVI_TX_D[3]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[3]
+#set_location_assignment PIN_P21 -to DVI_TX_HTPLG
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_HTPLG
+#set_location_assignment PIN_U28 -to DVI_TX_D[2]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[2]
+#set_location_assignment PIN_R21 -to DVI_TX_PD_N
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_PD_N
+#set_location_assignment PIN_V27 -to DVI_TX_D[1]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[1]
+#set_location_assignment PIN_R22 -to DVI_TX_MSEN
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_MSEN
+#set_location_assignment PIN_V28 -to DVI_TX_D[0]
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_D[0]
+#set_location_assignment PIN_R23 -to DVI_TX_ISEL
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_ISEL
+#set_location_assignment PIN_U22 -to DVI_TX_DE
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DE
+#set_location_assignment PIN_T21 -to DVI_TX_SDA
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_SDA
+#set_location_assignment PIN_V22 -to DVI_TX_DDCSDA
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DDCSDA
+#set_location_assignment PIN_T22 -to DVI_TX_SCL
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_SCL
+#set_location_assignment PIN_V23 -to DVI_TX_CLK
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_CLK
+#set_location_assignment PIN_V24 -to DVI_TX_DDCSCL
+#set_instance_assignment -name IO_STANDARD "2.5 V" -to DVI_TX_DDCSCL
+
+
+#============================================================
+# HSMC, HSMC connect to NET - 10/100/1000 Ethernet
+#============================================================
+set_location_assignment PIN_AE28 -to NET3_S_RX_P
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_S_RX_P
+set_location_assignment PIN_AF27 -to NET3_S_RX_N
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_S_RX_N
+set_location_assignment PIN_D27 -to NET3_RX_CRS
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_CRS
+set_location_assignment PIN_F24 -to NET3_S_TX_P
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_S_TX_P
+set_location_assignment PIN_D28 -to NET3_RX_D[7]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[7]
+set_location_assignment PIN_F25 -to NET3_S_TX_N
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_S_TX_N
+set_location_assignment PIN_E27 -to NET3_RX_D[1]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[1]
+set_location_assignment PIN_E28 -to NET3_RX_D[5]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[5]
+set_location_assignment PIN_C27 -to NET3_RX_D[2]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[2]
+set_location_assignment PIN_F27 -to NET3_RX_D[6]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[6]
+set_location_assignment PIN_F26 -to NET3_RX_D[0]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[0]
+set_location_assignment PIN_F28 -to NET3_RX_D[3]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[3]
+set_location_assignment PIN_E26 -to NET3_RX_D[4]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_D[4]
+set_location_assignment PIN_G27 -to NET3_RX_COL
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_COL
+set_location_assignment PIN_G25 -to NET3_RX_DV
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_DV
+set_location_assignment PIN_G28 -to NET3_LINK1000
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_LINK1000
+set_location_assignment PIN_G26 -to NET3_RX_CLK
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_CLK
+set_location_assignment PIN_K27 -to NET3_TX_D[1]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[1]
+set_location_assignment PIN_H25 -to NET3_TX_CLK
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_CLK
+set_location_assignment PIN_K28 -to NET3_TX_D[5]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[5]
+set_location_assignment PIN_H26 -to NET3_RX_ER
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RX_ER
+set_location_assignment PIN_M27 -to NET3_TX_ER
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_ER
+set_location_assignment PIN_K25 -to NET3_TX_D[6]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[6]
+set_location_assignment PIN_M28 -to NET3_TX_EN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_EN
+set_location_assignment PIN_K26 -to NET3_TX_D[7]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[7]
+set_location_assignment PIN_K21 -to NET3_TX_D[0]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[0]
+set_location_assignment PIN_L23 -to NET3_RESETN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_RESETN
+set_location_assignment PIN_K22 -to NET3_TX_D[4]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[4]
+set_location_assignment PIN_L24 -to NET3_MDC
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_MDC
+set_location_assignment PIN_H23 -to NET3_MDIO
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_MDIO
+set_location_assignment PIN_M25 -to NET3_TX_D[2]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[2]
+set_location_assignment PIN_H24 -to NET3_INTN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_INTN
+set_location_assignment PIN_M26 -to NET3_TX_D[3]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_TX_D[3]
+set_location_assignment PIN_G23 -to NET3_GTX_CLK
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_GTX_CLK
+set_location_assignment PIN_J27 -to NET2_S_CLKP
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_S_CLKP
+set_location_assignment PIN_G24 -to NET2_GTX_CLK
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_GTX_CLK
+set_location_assignment PIN_J28 -to NET2_S_CLKN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_S_CLKN
+set_location_assignment PIN_J23 -to NET2_RX_D[2]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[2]
+set_location_assignment PIN_R25 -to NET2_LINK1000
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_LINK1000
+set_location_assignment PIN_J24 -to NET2_RX_D[0]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[0]
+set_location_assignment PIN_R26 -to NET2_RX_CRS
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_CRS
+set_location_assignment PIN_P27 -to NET2_RX_DV
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_DV
+set_location_assignment PIN_T25 -to NET2_RX_D[7]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[7]
+set_location_assignment PIN_P28 -to NET2_TX_D[5]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[5]
+set_location_assignment PIN_T26 -to NET2_RX_D[4]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[4]
+set_location_assignment PIN_J25 -to NET2_TX_D[7]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[7]
+set_location_assignment PIN_U25 -to NET2_RX_COL
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_COL
+set_location_assignment PIN_J26 -to NET2_RX_ER
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_ER
+set_location_assignment PIN_U26 -to NET2_RX_D[6]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[6]
+set_location_assignment PIN_L27 -to NET2_TX_ER
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_ER
+set_location_assignment PIN_L21 -to NET2_RX_D[5]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[5]
+set_location_assignment PIN_L28 -to NET2_TX_EN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_EN
+set_location_assignment PIN_L22 -to NET2_RX_D[3]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[3]
+set_location_assignment PIN_V25 -to NET2_TX_D[0]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[0]
+set_location_assignment PIN_N25 -to NET2_RX_D[1]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_D[1]
+set_location_assignment PIN_V26 -to NET2_TX_D[4]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[4]
+set_location_assignment PIN_N26 -to NET2_RX_CLK
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RX_CLK
+set_location_assignment PIN_R27 -to NET2_TX_D[6]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[6]
+set_location_assignment PIN_P25 -to NET2_TX_CLK
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_CLK
+set_location_assignment PIN_R28 -to NET2_MDIO
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_MDIO
+set_location_assignment PIN_P26 -to NET2_TX_D[1]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[1]
+set_location_assignment PIN_U27 -to NET2_MDC
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_MDC
+set_location_assignment PIN_P21 -to NET2_TX_D[2]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[2]
+set_location_assignment PIN_U28 -to NET2_INTN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_INTN
+set_location_assignment PIN_R21 -to NET2_TX_D[3]
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_TX_D[3]
+set_location_assignment PIN_R23 -to NET2_RESETN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_RESETN
+set_location_assignment PIN_U22 -to NET2_S_RX_P
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_S_RX_P
+set_location_assignment PIN_V22 -to NET2_S_RX_N
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_S_RX_N
+set_location_assignment PIN_V23 -to NET2_S_TX_P
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_S_TX_P
+set_location_assignment PIN_Y27 -to NET3_S_CLKP
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_S_CLKP
+set_location_assignment PIN_V24 -to NET2_S_TX_N
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET2_S_TX_N
+set_location_assignment PIN_Y28 -to NET3_S_CLKN
+set_instance_assignment -name IO_STANDARD "2.5 V" -to NET3_S_CLKN
+
 
 #============================================================
 # End of pin assignments by Terasic System Builder
