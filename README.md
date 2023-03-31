@@ -71,6 +71,18 @@ added by HSMC card. Some useful features:
 
 ## Next Steps
 
+* Manual management interface
+  * Store the register # from the switches SW4-0 (Key 0)
+    * Show it on the HEX5-4
+  * Read the stored register (Key 1)
+    * Show it on LEDR15-0
+  * Write switches SW15-0 to the stored register (Key 2)
+    * Show current switch 15-0 settings always on HEX3-0
+    * Show SW4-0 on HEX7-6
+  * Hardware reset (Key 3)
+
+* Write the 16x2 character interface so we can show more info
+
 * Management state machine
   * Queries MDIO for state periodically
   * Exports state flags based on the state read
@@ -525,6 +537,10 @@ The `HWCFG_MODE` could be changed
   * 1111 = GMII/MII to copper
   * After changing, needs a soft reset
 
+* Set the delays in the PHY - see Page 213 / 4.12.2
+  * Register 20.7 = Delay to RX_CLK
+  * Register 20.1 = Delay to TX_CLK
+
 
 
 ## Experimental learnings with 88E1111
@@ -574,3 +590,19 @@ The `HWCFG_MODE` could be changed
 * VS Code as external editor: `"C:\Users\Doug\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd" --goto %f:%l`
   * You cannot insert HDL template without using the internal editor, so sometimes this needs to change
 * Questa directory: `C:/bin/fpga/intelFPGA_lite/21.1/questa_fse/win64`
+
+
+
+# 16x2 LCD
+
+[Crystalfontz CFAH1602B-TMC-JP](https://www.crystalfontz.com/product/cfah1602btmcjp)
+* [Hitachi HD44780 Display Controller](https://www.sparkfun.com/datasheets/LCD/HD44780.pdf)
+* [KS0066U]()
+* [Lab Exercise to use this with all datasheets](http://web02.gonzaga.edu/faculty/talarico/CP430/LABS/Lab4.pdf)
+* DE2-115 pin `LCD_BLON` is not connected - no backlight
+* [Example Verilog](https://github.com/amanmibra/lcd-de2-115) - incomprehensible
+* [Another example](https://gist.github.com/jjcarrier/1529101)
+* [ANother lab](http://media.ee.ntu.edu.tw/personal/pcwu/dclab/dclab_08.pdf)
+* [Example Verilog for HD44780](https://circuit4us.medium.com/play-with-16x2-lcd-display-ca70a047af36)
+* [Another example](http://robotics.hobbizine.com/fpgalcd.html) - good one
+* [Xilinx Example](https://docs.xilinx.com/v/u/en-US/ug330)

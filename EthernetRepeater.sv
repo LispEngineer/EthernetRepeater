@@ -257,7 +257,7 @@ module EthernetRepeater(
 // Zero out unused outputs
 always_comb begin
   LEDG[6:5] = '0;
-  LEDR[17:16] = '0;
+  LEDR[16] = '0;
   HEX0 = '1; // These LED segments are OFF when logic 1
   HEX1 = '1;
   HEX2 = '1;
@@ -280,10 +280,10 @@ always_comb begin
   // DVI_TX_VS = '0;
   // DVI_EDID_WP = '0;
   LCD_BLON = '0; // Turn Backlight on? Shouldn't do anything
-  LCD_EN = '0;
-  LCD_RS = '0;
-  LCD_RW = '0;
-  LCD_ON = '0; // Turn LCD on
+  // LCD_EN = '0;
+  // LCD_RS = '0;
+  // LCD_RW = '0;
+  LCD_ON = '1; // Turn LCD on
   UART_RTS = '0;
   UART_TXD = '1; // Marking means we're transmitting nothing
   SD_CLK = '0;
@@ -344,7 +344,7 @@ always_comb begin
 `ifdef IS_QUARTUS
   // For some reason, this makes Questa unhappy
   EX_IO = 'z;
-  LCD_DATA = 'z;
+  // LCD_DATA = 'z;
   PS2_CLK = 'z;
   PS2_CLK2 = 'z;
   PS2_DAT = 'z;
@@ -638,6 +638,58 @@ always_ff @(posedge CLOCK_50) begin
 end
 
 
+// LCD DRIVER TOP LEVEL ///////////////////////////////////////////////////////
+
+// Wait at least 20ms before using the LCD
+logic [31:0] lcd_power_on = '0;
+logic lcd_available = '0;
+
+logic [7:0] lcd_data_o, lcd_data_i;
+logic lcd_data_e;
+logic lcd_busy;
+
+// Wait 20ms before we enable our LCD
+always_ff @(posedge CLOCK_50) begin
+  if (!lcd_available) begin
+    if (lcd_power_on == 32'd100_000_000) begin // FIXME: Make localparam
+      lcd_available <= '1;
+    end else begin
+      lcd_power_on <= lcd_power_on + 1'd1;
+    end
+  end // lcd_available
+end
+
+lcd_module lcd_module (
+  .clk(CLOCK_50),
+  .reset('0),
+
+  // Interface to physical LCD module
+  .data_o(lcd_data_o),
+  .data_i(lcd_data_i),
+  .data_e(lcd_data_e),
+  .rs(LCD_RS),
+  .rw(LCD_RW),
+  .en(LCD_EN),
+
+  // Interface to this module
+  .busy(lcd_busy),
+  .activate(lcd_available),
+  .char(8'h48) // H
+);
+
+assign LEDR[17] = lcd_busy;
+
+genvar i;
+generate
+  for (i = 0; i < 8; i = i + 1) begin: lcd_output_generator
+    ALTIOBUF_LCD ALTIOBUF_lcd_i (
+      .dataio  (LCD_DATA[i]),
+      .oe      (lcd_data_e),
+      .datain  (lcd_data_o[i]),
+      .dataout (lcd_data_i[i])
+    );
+  end
+endgenerate
 
 
 // LED BLINKER TOP LEVEL //////////////////////////////////////////////////////
