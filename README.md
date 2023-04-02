@@ -61,6 +61,7 @@ added by HSMC card. Some useful features:
 * Management Interface - read & write enabled
   * Visually simulated in Questa
   * Tested on real PHY for reading
+
 * RGMII Transmit Capability
   * Works at 10BASE-T: Uses PLL generated 2.5MHz clock & 12ns delay on transmitted GTX clock
   * Works at 100BASE-T: Uses PLL generated 25MHz clock & 12ns delay on transmitted GTX clock
@@ -69,7 +70,15 @@ added by HSMC card. Some useful features:
   * Sends a fixed packet
     * Calculates the CRC on the fly and sends it, using [generated HDL](https://bues.ch/cms/hacking/crcgen)
 
+* Built-in LCD
+  * Can send a full screen of characters from switches
+
 ## Next Steps
+
+* LCD Manager
+  * Power-up sequence required
+  * Send a letter with a specific screen location
+  * Prepare to use it to display packet contents (!!!)
 
 * Manual management interface
   * Store the register # from the switches SW4-0 (Key 0)
