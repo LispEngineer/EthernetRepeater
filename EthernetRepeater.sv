@@ -665,6 +665,8 @@ end
 // We will have to write a driver that does the initialization,
 // then passes through the rest of the commands.
 
+logic lcd_activate = '0;
+
 lcd_module lcd_module (
   .clk(CLOCK_50),
   .reset('0),
@@ -679,7 +681,7 @@ lcd_module lcd_module (
 
   // Interface to this module
   .busy(lcd_busy),
-  .activate(lcd_available),
+  .activate(lcd_activate),
   .is_data('1), // Send an H in
   .data_inst(SW[17:10]), // Change the letter being sent
   .delay('0) // Default delay
@@ -698,6 +700,44 @@ generate
     );
   end
 endgenerate
+
+logic last_lcd_busy = '0;
+logic [3:0] last_key_lcd = '0;
+
+// Prove we can send data to the module one letter at a time.
+always_ff @(posedge CLOCK_50) begin
+  last_key_lcd <= KEY;
+  last_lcd_busy <= lcd_busy;
+
+  // TODO: Handle reset
+
+  if (!lcd_busy && last_lcd_busy) begin
+    // We need to handle the completion of an activation.
+    // Nothing really to do
+
+  end else if (lcd_busy && lcd_activate) begin
+    // Command just started
+    lcd_activate <= '0;
+  end else if (lcd_busy) begin
+    // The LCD module is busy, nothing to do
+  end else if (lcd_activate) begin
+    // Do nothing
+  end else if (!lcd_busy && !lcd_activate && !KEY[2] && KEY[2] != last_key_lcd[2]) begin
+    // We're not busy, not awaiting activation, and the key was just pressed
+    // (remember key down reports logic 0)
+    lcd_activate <= '1;
+  end
+end // Activate LCD module
+// TODO: Make the above a module with inputs:
+//   activate request (the key) - only activated from 0 to 1 edge
+//   busy status
+// Outputs:
+//   actual activate
+//   and its deactivation
+// Parameters:
+//   activate only if not busy currently
+//     or activate when not busy
+
 
 
 // LED BLINKER TOP LEVEL //////////////////////////////////////////////////////
