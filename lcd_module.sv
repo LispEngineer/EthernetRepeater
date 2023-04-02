@@ -48,8 +48,13 @@ module lcd_module #(
   input  logic [23:0] delay     // If not zero, delay this many cycles before being unbusy
 );
 
+`ifdef IS_QUARTUS
+// Questa doesn't like these two lines:
+// ** Error (suppressible): lcd_module.sv(77): (vlog-7061) Variable 'data_e' driven in an always_ff block, 
+//    may not be driven by any other process. See lcd_module.sv(52).
 initial busy = '0;
 initial data_e = '0;
+`endif
 
 localparam S_IDLE     = 4'd0,
            S_PREP     = 4'd1, // Set up the outputs, wait
@@ -83,6 +88,7 @@ always_ff @(posedge clk) begin
     case (state)
     S_IDLE: begin /////////////////////////////////////////////////////////////////////
       busy <= '0;
+      data_e <= '0;
       if (activate) begin
         state <= S_PREP;
         count <= '0;

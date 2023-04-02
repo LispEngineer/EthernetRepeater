@@ -37,8 +37,8 @@ logic lcd_data_e, lcd_rs, lcd_rw, lcd_en;
 // Signals to LCD Module (DUT)
 logic activate = '0;
 logic busy;
-logic is_data = '0;
-logic [7:0] data_inst = 8'hDF;
+logic is_data = '1;
+logic [7:0] data_inst = 8'h48; // ASCII "H"
 logic [23:0] delay = 23'h00_0020;
 
 lcd_module dut (
