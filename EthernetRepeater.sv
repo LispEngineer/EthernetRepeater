@@ -681,7 +681,7 @@ lcd_module lcd_module (
   .busy(lcd_busy),
   .activate(lcd_available),
   .is_data('1), // Send an H in
-  .data_inst(8'h48), // ASCII H
+  .data_inst(SW[17:10]), // Change the letter being sent
   .delay('0) // Default delay
 );
 
