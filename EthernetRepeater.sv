@@ -207,7 +207,8 @@ module EthernetRepeater(
   // inout  wire         DVI_TX_SDA,
   // output logic        DVI_TX_VS
 
-	//////////// HSMC, HSMC connect to NET - 10/100/1000 Ethernet //////////
+	//////////// HSMC, HSMC connect to NET - Dual 10/100/1000 Ethernet //////////
+  // FIXME: Set the default outputs on these
 	output logic       NET2_GTX_CLK,
 	input  logic       NET2_INTN,
 	input  logic       NET2_LINK1000,
@@ -251,7 +252,7 @@ module EthernetRepeater(
 	output logic       NET3_S_TX_P,
 	input  logic       NET3_TX_CLK,
 	output logic       NET3_TX_EN,
-	output logic       NET3_TX_ER  
+	output logic       NET3_TX_ER
 );
 
 // Zero out unused outputs
@@ -679,7 +680,9 @@ lcd_module lcd_module (
   // Interface to this module
   .busy(lcd_busy),
   .activate(lcd_available),
-  .char(8'h48) // H
+  .is_data('1), // Send an H in
+  .data_inst(8'h48), // ASCII H
+  .delay('0) // Default delay
 );
 
 assign LEDR[17] = lcd_busy;

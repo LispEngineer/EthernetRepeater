@@ -26,13 +26,13 @@ module lcd_module #(
   parameter PREP_COUNT = 24'd3,      // 60ns at 50MHz (>= 40ns)
   parameter EN_COUNT   = 24'd12,     // 240ns at 50MHz (>= 230ns)
   parameter EN_HOLD    = 24'd2,      // 40ns at 50MHz (>= 10ns)
-  parameter DELAY      = 24'd82_000  // 1,640,000ns (1.64ms) at 50MHz (>= 40µs to 1.64ms)
+  parameter DELAY      = 24'd82_000  // Default delay: 1,640,000ns (1.64ms) at 50MHz (>= 40µs to 1.64ms)
 ) (
   // Our appropriate speed clock input (copied to output)
   input  logic clk,
   input  logic reset,
 
-  // Interface to LCD module
+  // Interface to PHY LCD module
   output logic [7:0] data_o,
   input  logic [7:0] data_i,
   output logic       data_e, // Output when 1, input when 0
@@ -41,13 +41,11 @@ module lcd_module #(
   output logic       en, // H to L signals it to read the other pins
 
   // Interface to this module
-  output logic       busy,
-  input  logic       activate,
-  input  logic [7:0] char // Character to shift out (the only current operation)
-
-  // TODO: Add:
-  // 1. input for final delay override (if non-zero)
-  // 2. input for instruction/data  
+  output logic        busy,
+  input  logic        activate, // Signal when !busy and then deactivate
+  input  logic        is_data,  // Equivalent to the rw
+  input  logic  [7:0] data_inst,// Character data or instruction to shift out (the only current operation)
+  input  logic [23:0] delay     // If not zero, delay this many cycles before being unbusy
 );
 
 initial busy = '0;
@@ -63,25 +61,45 @@ logic [3:0] state = S_IDLE;
 // Our counter
 logic [23:0] count = '0;
 
+// Where we go after our delay
+logic [3:0] post_delay_state;
+
+// When we activate, save our inputs
+logic        r_is_data;
+logic  [7:0] r_data_inst;
+logic [23:0] r_delay;
+
 always_ff @(posedge clk) begin
 
   if (reset) begin
 
-    rs <= '0;
-    rw <= '0;
     en <= '0;
     data_e <= '0; // tri-state output
     busy <= '1; // Should we be "busy" when being reset?
+    state <= S_IDLE;
 
   end else begin
 
     case (state)
     S_IDLE: begin /////////////////////////////////////////////////////////////////////
+      busy <= '0;
       if (activate) begin
         state <= S_PREP;
         count <= '0;
         busy <= '1;
-        data_o <= char; // Capture the output data
+        // Just in case it helps to set this up a bit earlier
+        data_e <= '1;
+        data_o <= data_inst;
+        rs <= is_data;
+        rw <= '0; // We always are 0 - writing
+        // Save our inputs
+        r_data_inst <= data_inst;
+        r_is_data <= is_data;
+        if (delay == 0)
+          r_delay <= DELAY;
+        else
+          r_delay <= delay;
+        post_delay_state <= S_IDLE;
       end
     end // S_IDLE
 
@@ -90,10 +108,8 @@ always_ff @(posedge clk) begin
       if (count == '0) begin
         // Set the inputs to the physical LCD module
         data_e <= '1;
-        data_o <= char;
-        // data_o <= 8'h01; // Clear screen
-        rs <= '1; // Sending data, not instruction
-        // rs <= '0; // Send instruction
+        data_o <= r_data_inst;
+        rs <= r_is_data; // 1 if sending data, 0 if sending instruction
         rw <= '0; // Writing data, not reading
         count[0] <= 1'b1;
       end else if (count == PREP_COUNT) begin
@@ -124,7 +140,7 @@ always_ff @(posedge clk) begin
         en <= '0;
         count[0] <= 1'b1;
       end else if (count == EN_HOLD) begin
-        count <= DELAY; // How long should we delay for?
+        count <= r_delay; // How long should we delay for?
         state <= S_DELAY;
         data_e <= '0; // No longer outputting data
       end else begin
@@ -136,8 +152,9 @@ always_ff @(posedge clk) begin
       // We delay until we count down, since the delay can differ for each type
       // of operation
       if (count == '0) begin
-        state <= S_IDLE;
-        busy <= '0;
+        // We may not want to go to the main loop, but instead the initialization loop?
+        state <= post_delay_state;
+        // If idle, it will turn busy flag off.
       end else begin
         count <= count - 1'd1;
       end
