@@ -61,6 +61,9 @@ added by HSMC card. Some useful features:
 * Management Interface - read & write enabled
   * Visually simulated in Questa
   * Tested on real PHY for reading
+  * Useful actions:
+    * Position cursor to Row, Col
+    * Clear display (and position cursor to first spot)
 
 * RGMII Transmit Capability
   * Works at 10BASE-T: Uses PLL generated 2.5MHz clock & 12ns delay on transmitted GTX clock
