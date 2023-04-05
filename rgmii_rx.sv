@@ -58,7 +58,7 @@ module rgmii_rx #(
   input  logic                 clk_ram_rd,
   input  logic                 ram_rd_ena, // Read enable
   input  logic [BUFFER_SZ-1:0] ram_rd_addr, // Read address
-  output logic           [8:0] ram_rd_data, // Read data output
+  output logic           [7:0] ram_rd_data, // Read data output
 
   // FIFO read - in its own clock domain
   input  logic                  clk_fifo_rd, // Usually same as clk_ram_rd
