@@ -1279,6 +1279,16 @@ set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id rgmii_tx_tb
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME test_rgmii_tx -section_id rgmii_tx_tb
 set_instance_assignment -name GLOBAL_SIGNAL GLOBAL_CLOCK -to ENET1_RX_CLK
 set_instance_assignment -name GLOBAL_SIGNAL GLOBAL_CLOCK -to ENETCLK_25
+set_global_assignment -name EDA_TEST_BENCH_NAME lcd_module -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id lcd_module
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME test_lcd_module -section_id lcd_module
+set_global_assignment -name EDA_TEST_BENCH_FILE test_mii_management_interface.sv -section_id management_interface_tb -hdl_version SystemVerilog_2005
+set_global_assignment -name EDA_TEST_BENCH_FILE mii_management_interface.sv -section_id management_interface_tb -hdl_version SystemVerilog_2005
+set_global_assignment -name EDA_TEST_BENCH_FILE rgmii_tx.sv -section_id rgmii_tx_tb -hdl_version SystemVerilog_2005
+set_global_assignment -name EDA_TEST_BENCH_FILE test_rgmii_tx.sv -section_id rgmii_tx_tb -hdl_version SystemVerilog_2005
+set_global_assignment -name EDA_TEST_BENCH_FILE lcd_module.sv -section_id lcd_module -hdl_version SystemVerilog_2005
+set_global_assignment -name EDA_TEST_BENCH_FILE test_lcd_module.sv -section_id lcd_module -hdl_version SystemVerilog_2005
+set_global_assignment -name SYSTEMVERILOG_FILE rgmii_rx.sv
 set_global_assignment -name SYSTEMVERILOG_FILE test_lcd_module.sv
 set_global_assignment -name SYSTEMVERILOG_FILE lcd_module.sv
 set_global_assignment -name SYSTEMVERILOG_FILE crc32_8bit.sv
@@ -1298,13 +1308,6 @@ set_global_assignment -name QIP_FILE pll_50_to_2p5_with_shift.qip
 set_global_assignment -name QIP_FILE pll_50_to_25_with_shift.qip
 set_global_assignment -name QIP_FILE pll_50_to_125_with_shift.qip
 set_global_assignment -name QIP_FILE ALTIOBUF_LCD.qip
-set_global_assignment -name EDA_TEST_BENCH_NAME lcd_module -section_id eda_simulation
-set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id lcd_module
-set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME test_lcd_module -section_id lcd_module
-set_global_assignment -name EDA_TEST_BENCH_FILE test_mii_management_interface.sv -section_id management_interface_tb -hdl_version SystemVerilog_2005
-set_global_assignment -name EDA_TEST_BENCH_FILE mii_management_interface.sv -section_id management_interface_tb -hdl_version SystemVerilog_2005
-set_global_assignment -name EDA_TEST_BENCH_FILE rgmii_tx.sv -section_id rgmii_tx_tb -hdl_version SystemVerilog_2005
-set_global_assignment -name EDA_TEST_BENCH_FILE test_rgmii_tx.sv -section_id rgmii_tx_tb -hdl_version SystemVerilog_2005
-set_global_assignment -name EDA_TEST_BENCH_FILE lcd_module.sv -section_id lcd_module -hdl_version SystemVerilog_2005
-set_global_assignment -name EDA_TEST_BENCH_FILE test_lcd_module.sv -section_id lcd_module -hdl_version SystemVerilog_2005
+set_global_assignment -name QIP_FILE rx_ram_buffer.qip
+set_global_assignment -name QIP_FILE rx_fifo.qip
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
