@@ -25,7 +25,8 @@ module rgmii_rx_impl #(
   parameter FIFO_INSERT_TRIES = 8,
   // For testing
 `ifdef IS_QUARTUS
-  parameter BOGUS_GENERATOR_DELAY = 2_000
+  // A packet every 2 seconds at 25MHz (100mbps) = 50_000_000
+  parameter BOGUS_GENERATOR_DELAY = 50_000_000
 `else
   parameter BOGUS_GENERATOR_DELAY = 25
 `endif
@@ -127,7 +128,7 @@ logic [2:0] state = S_WAIT;
 logic [BUFFER_NUM_ENTRY_BITS-1:0] cur_buf;
 logic [BUFFER_ENTRY_SZ-1:0] byte_pos; // Position within a packet
 // A count used within any state for its own purposes
-logic [BUFFER_ENTRY_SZ-1:0] local_count = BOGUS_GENERATOR_DELAY;
+logic [31:0] local_count = BOGUS_GENERATOR_DELAY;
 
 // Our current index into our RAM
 // Comprised of which buffer we are doing and
