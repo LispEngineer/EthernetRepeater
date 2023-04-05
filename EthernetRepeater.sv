@@ -690,6 +690,8 @@ end
 // then passes through the rest of the commands.
 
 logic lcd_activate = '0;
+logic char_activate = '0;
+logic [4:0] char_loc = '1; // Top bit = row 1 or 2, bottom = col
 
 lcd_module lcd_module (
   .clk(CLOCK_50),
@@ -703,12 +705,17 @@ lcd_module lcd_module (
   .rw(LCD_RW),
   .en(LCD_EN),
 
-  // Interface to this module
+  // Low level interface to this module
   .busy(lcd_busy),
   .activate(lcd_activate),
   .is_data('1), // Send an H in
   .data_inst(SW[17:10]), // Change the letter being sent
-  .delay('0) // Default delay
+  .delay('0), // Default delay
+
+  // Character interface
+  .char_activate(char_activate),
+  .move_row(char_loc[4]),
+  .move_col(char_loc[3:0])
 );
 
 assign LEDR[17] = lcd_busy;
@@ -739,17 +746,19 @@ always_ff @(posedge CLOCK_50) begin
     // We need to handle the completion of an activation.
     // Nothing really to do
 
-  end else if (lcd_busy && lcd_activate) begin
+  end else if (lcd_busy && (lcd_activate || char_activate)) begin
     // Command just started
     lcd_activate <= '0;
+    char_activate <= '0;
   end else if (lcd_busy) begin
     // The LCD module is busy, nothing to do
   end else if (lcd_activate) begin
     // Do nothing
-  end else if (!lcd_busy && !lcd_activate && !KEY[2] && KEY[2] != last_key_lcd[2]) begin
+  end else if (!lcd_busy && !char_activate && !KEY[2] && KEY[2] != last_key_lcd[2]) begin
     // We're not busy, not awaiting activation, and the key was just pressed
     // (remember key down reports logic 0)
-    lcd_activate <= '1;
+    char_activate <= '1;
+    char_loc <= char_loc + 1'd1;
   end
 end // Activate LCD module
 // TODO: Make the above a module with inputs:
