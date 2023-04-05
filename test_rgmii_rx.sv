@@ -9,7 +9,8 @@
 // Tick at 1ns (using #<num>) to a precision of 0.1ns (100ps)
 `timescale 1 ns / 100 ps
 
-module test_rgmii_tx();
+
+module test_rgmii_rx();
 
 // Simulator generated clock & reset
 logic  clk;
@@ -19,56 +20,48 @@ logic  reset;
 ////////////////////////////////////////////////////////////////////////////////////
 
 // generate clock to sequence tests
+localparam period = 20;
+localparam reset_period = period * 2.2;
 always begin
   // 2.5 MHz = 200 (one full cycle every 400 ticks at 1ns per tick per above)
   // 25 MHz = 20
   // 125 MHz = 4
-  #200 clk <= ~clk;
+  #period clk <= ~clk;
 end
 
-logic activate = '0;
-logic busy;
 
-logic [3:0] tx_data;
-logic [3:0] tx_data_h;
-logic [3:0] tx_data_l;
-logic tx_ctl_h, tx_ctl_l;
-logic tx_ctl;
-logic gtx_clk;
-logic [31:0] crc;
-logic [31:0] crc_final; // XOR'd with the final value
+rgmii_rx dut (
 
-rgmii_tx dut (
-  .tx_clk(clk),
-  .reset('0),
-  .ddr_tx('1), // Test with DDR now
-  .activate(activate),
-  .busy(busy),
-  .gtx_clk(gtx_clk),
-  .tx_data_h(tx_data_h),
-  .tx_data_l(tx_data_l),
-  .tx_ctl_h(tx_ctl_h),
-  .tx_ctl_l(tx_ctl_l),
-  .crc_out(crc)
+  .clk_rx(clk),
+  .reset(reset),
+  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing)
+
+  // Inputs from PHY (after DDR conversion)
+  .rx_ctl_h('0), // RX_DV
+  .rx_ctl_l('0), // RX_ER XOR RX_DV
+  .rx_data_h('0),
+  .rx_data_l('0),
+
+  // RAM read interface
+  .clk_ram_rd(clk),
+  .ram_rd_ena(), // Read enable
+  .ram_rd_addr(), // Read address
+  .ram_rd_data(), // Read data output
+
+  // FIFO read interface
+  .clk_fifo_rd(clk), // Usually same as clk_ram_rd
+  .fifo_rd_empty(),
+  .fifo_rd_req(),
+  .fifo_rd_data()
 );
 
-// Make our DDR "actual output" signals
-always_comb begin
-  tx_data = gtx_clk ? tx_data_h : tx_data_l;
-  tx_ctl  = (gtx_clk && tx_ctl_h)  || (!gtx_clk && tx_ctl_l);
-  crc_final = crc ^ 32'hFFFF_FFFF;
-end
 
 // initialize test with a reset for 22 ns
 initial begin
   $display("Starting Simulation @ ", $time);
   clk <= 1'b0;
   reset <= 1'b1; 
-  #22; reset <= 1'b0;
-
-  activate <= '1;
-  #2000;
-  activate <= '0;
+  #reset_period; reset <= 1'b0;
 
   // Stop the simulation at appropriate point
   #64000;
