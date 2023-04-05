@@ -22,7 +22,11 @@ module rgmii_rx_impl #(
   // FIFO depth is 2 ^ BUFFER_SIZE_BITS long too
   parameter FIFO_WIDTH = 16,
   // For testing
+`ifdef IS_QUARTUS
   parameter BOGUS_GENERATOR_DELAY = 2_000
+`else
+  parameter BOGUS_GENERATOR_DELAY = 25
+`endif
 ) (
   // Our appropriate speed clock input,
   // delayed 90 degrees from raw input,
@@ -117,18 +121,18 @@ localparam S_WAIT = 3'd0,
            S_CRC = 3'd3, // The CRC (FCS)
            S_FIFO = 3'd4; // Put the frame into the FIFO
 
-logic [2:0] state;
+logic [2:0] state = S_WAIT;
 logic [BUFFER_NUM_ENTRY_BITS-1:0] cur_buf;
 logic [BUFFER_ENTRY_SZ-1:0] byte_pos; // Position within a packet
 // A count used within any state for its own purposes
-logic [BUFFER_ENTRY_SZ-1:0] local_count;
+logic [BUFFER_ENTRY_SZ-1:0] local_count = BOGUS_GENERATOR_DELAY;
 
 // Our current index into our RAM
 // Comprised of which buffer we are doing and
 // which byte we're doing within that buffer.
 logic [BUFFER_SZ-1:0] ram_pos;
 
-always ram_pos = {cur_buf, byte_pos};
+assign ram_pos = {cur_buf, byte_pos};
 
 always_ff @(posedge clk_rx) begin
 
@@ -223,6 +227,7 @@ always_ff @(posedge clk_rx) begin
       if (local_count == 3) begin
         // All done
         local_count <= '0;
+        state <= S_FIFO;
       end else begin
         local_count <= local_count + 1'd1;
       end
