@@ -3,9 +3,7 @@
 // symbolics@lisp.engineer
 //
 // See rgmii_rx.md for details.
-// NOTE: Multi-clock module!
-// Instantiates the RAM & FIFO and passes them to the
-// external world and the actual RGMII Receiver implementation.
+// NOTE: SINGLE CLOCK MODULE!
 
 `ifdef IS_QUARTUS // Defined in Assignments -> Settings -> ... -> Verilog HDL input  logic 
 // This doesn't work in Questa for some reason. vlog-2892 errors.
@@ -15,14 +13,16 @@
 // Simulation: Tick at 1ns (using #<num>) to a precision of 0.1ns (100ps)
 `timescale 1 ns / 100 ps
 
-module rgmii_rx #(
+module rgmii_rx_impl #(
   // 2 ^ BUFFER_SIZE_BITS
   parameter BUFFER_NUM_ENTRY_BITS = 3, // 8 entries, i.e. 16kB RAM
   parameter BUFFER_ENTRY_SZ = 11, // 2kB = 11 bits
   // Total RAM size
   parameter BUFFER_SZ = BUFFER_NUM_ENTRY_BITS + BUFFER_ENTRY_SZ,
   // FIFO depth is 2 ^ BUFFER_SIZE_BITS long too
-  parameter FIFO_WIDTH = 16
+  parameter FIFO_WIDTH = 16,
+  // For testing
+  parameter BOGUS_GENERATOR_DELAY = 2_000
 ) (
   // Our appropriate speed clock input,
   // delayed 90 degrees from raw input,
@@ -52,95 +52,38 @@ module rgmii_rx #(
   // Send L bits while the clock is low [7:4]
   // See RGMII 2.0 spec section 3.0
 
-  // RAM & FIFO Outputs ////////////////////////
+  // RAM & FIFO Interface ///////////////////////////////////
 
-  // RAM read - in its own clock domain
-  input  logic                 clk_ram_rd,
-  input  logic                 ram_rd_ena, // Read enable
-  input  logic [BUFFER_SZ-1:0] ram_rd_addr, // Read address
-  output logic           [8:0] ram_rd_data, // Read data output
+  // RAM writer - synchronous to clk_rx
+  input  logic                 ram_wr_ena,  // Write enable
+  input  logic [BUFFER_SZ-1:0] ram_wr_addr, // Write address
+  output logic           [8:0] ram_wr_data, // Write data output
 
-  // FIFO read - in its own clock domain
-  input  logic                  clk_fifo_rd, // Usually same as clk_ram_rd
-  output logic                  fifo_rd_empty,
-  input  logic                  fifo_rd_req,
-  output logic [FIFO_WIDTH-1:0] fifo_rd_data
+  // FIFO writer - synchronous to clk_rx
+  output logic                  fifo_aclr, // Asynchronous clear
+  input  logic                  fifo_wr_full,
+  input  logic                  fifo_wr_req,
+  output logic [FIFO_WIDTH-1:0] fifo_wr_data
 
   ////////////////////////////////////////////////////
   // Debugging outputs
 );
 
-// RAM & FIFO /////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+// Bogus RGMII Receiver to test the RAM and FIFO
 
-// Signals to the RX implementation for RAM & FIFO
-logic ram_wr_ena;
-logic [BUFFER_SZ-1:0] ram_wr_addr;
-logic [7:0] ram_wr_data;
-logic fifo_aclr;
-logic fifo_wr_full;
-logic fifo_wr_req;
-logic [FIFO_WIDTH-1:0] fifo_wr_data;
+// Simple state machine:
+// 1. Wait a bit (make it a parameter)
+// 2. Start a new packet
+// 3. Write a bogus frame header: PREAMBLE, SFD
+// 4. Write a bunch of RAM of length packet number * 16 + 64
+//    with the same byte as the packet number + 0x21 (ASCII 0)
+// 5. Write a real CRC 4 bytes
+// 6. Pass the packet to the FIFO
+// 7. Repeat
 
-// Instantiate our read & write port RAM
-rx_ram_buffer	rx_ram_buffer_inst (
-	.rdclock   ( clk_ram_rd ),
-	.wrclock   ( clk_rx ),
-
-  .rden      ( ram_rd_ena ),
-	.rdaddress ( ram_rd_addr ),
-	.q         ( ram_rd_data ),
-
-  .wren      ( ram_wr_ena ),
-	.wraddress ( ram_wr_addr ),
-	.data      ( ram_wr_data )
-);
-
-// And here is our FIFO
-rx_fifo	rx_fifo_inst (
-	.rdclk   ( clk_fifo_rd ),
-	.wrclk   ( clk_rx ),
-
-  .rdempty ( fifo_rd_empty ),
-	.rdreq   ( fifo_rd_req ),
-	.q       ( fifo_rd_data ),
-
-  .aclr    ( fifo_aclr ),
-	.wrfull  ( fifo_wr_full ),
-	.wrreq   ( fifo_wr_req ),
-	.data    ( fifo_wr_data )
-);
 
 // RGMII Receiver /////////////////////////////////////////////////
-
-rgmii_rx_impl #(
-  .BUFFER_NUM_ENTRY_BITS(BUFFER_NUM_ENTRY_BITS),
-  .BUFFER_ENTRY_SZ(BUFFER_ENTRY_SZ),
-  .BUFFER_SZ(BUFFER_SZ),
-  .FIFO_WIDTH(FIFO_WIDTH)
-  // BOGUS_GENERATOR_DELAY
-) rgmii_rx_impl_inst (
-  .clk_rx(clk_rx),
-  .reset(reset),
-  .ddr_rx(ddr_rx),
-
-  // PHY interface
-  .rx_ctl_h(rx_ctl_h),
-  .rx_ctl_l(rx_ctl_l),
-  .rx_data_h(rx_data_h),
-  .rx_data_l(rx_data_l),
-
-  // RAM interface - clocked with clk_rx
-  .ram_wr_ena(ram_wr_ena),
-  .ram_wr_addr(ram_wr_addr),
-  .ram_wr_data(ram_wr_data),
-
-  // FIFO interface - clocked with clk_rx
-  .fifo_aclr, // Asynchronous clear
-  .fifo_wr_full,
-  .fifo_wr_req,
-  .fifo_wr_data
-);
-
 
 endmodule // rgmii_rx
 

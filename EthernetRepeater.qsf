@@ -1288,6 +1288,7 @@ set_global_assignment -name EDA_TEST_BENCH_FILE rgmii_tx.sv -section_id rgmii_tx
 set_global_assignment -name EDA_TEST_BENCH_FILE test_rgmii_tx.sv -section_id rgmii_tx_tb -hdl_version SystemVerilog_2005
 set_global_assignment -name EDA_TEST_BENCH_FILE lcd_module.sv -section_id lcd_module -hdl_version SystemVerilog_2005
 set_global_assignment -name EDA_TEST_BENCH_FILE test_lcd_module.sv -section_id lcd_module -hdl_version SystemVerilog_2005
+set_global_assignment -name SYSTEMVERILOG_FILE rgmii_rx_impl.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rgmii_rx.sv
 set_global_assignment -name SYSTEMVERILOG_FILE test_lcd_module.sv
 set_global_assignment -name SYSTEMVERILOG_FILE lcd_module.sv
