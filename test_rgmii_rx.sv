@@ -64,7 +64,8 @@ initial begin
   #(reset_period) reset <= 1'b0;
 
   // Stop the simulation at appropriate point
-  #(period * 2 * 10000);
+  // #(period * 2 * 10000);
+  #40000; // 40µs is enough to fill the FIFO
   $display("Ending simulation @ ", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!

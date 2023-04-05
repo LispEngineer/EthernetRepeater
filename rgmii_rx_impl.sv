@@ -238,10 +238,12 @@ always_ff @(posedge clk_rx) begin
       ram_wr_ena <= '0;
       // FIXME: CODE ME
       state <= S_WAIT;
+      local_count <= BOGUS_GENERATOR_DELAY;
     end // S_FIFO
 
     default: begin
       state <= S_WAIT;
+      local_count <= BOGUS_GENERATOR_DELAY;
     end // default
     endcase // State machine
 
