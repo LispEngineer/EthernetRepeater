@@ -26,7 +26,7 @@ always begin
   // 2.5 MHz = 200 (one full cycle every 400 ticks at 1ns per tick per above)
   // 25 MHz = 20
   // 125 MHz = 4
-  #period clk <= ~clk;
+  #20 clk <= ~clk;
 end
 
 
@@ -61,7 +61,7 @@ initial begin
   $display("Starting Simulation @ ", $time);
   clk <= 1'b0;
   reset <= 1'b1; 
-  #reset_period; reset <= 1'b0;
+  #44 reset <= 1'b0;
 
   // Stop the simulation at appropriate point
   #64000;

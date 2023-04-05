@@ -58,7 +58,7 @@ module rgmii_rx_impl #(
   // RAM writer - synchronous to clk_rx
   output logic                 ram_wr_ena,  // Write enable
   output logic [BUFFER_SZ-1:0] ram_wr_addr, // Write address
-  output logic           [8:0] ram_wr_data, // Write data output
+  output logic           [7:0] ram_wr_data, // Write data output
 
   // FIFO writer - synchronous to clk_rx
   output logic                  fifo_aclr, // Asynchronous clear
