@@ -21,6 +21,8 @@ module rgmii_rx_impl #(
   parameter BUFFER_SZ = BUFFER_NUM_ENTRY_BITS + BUFFER_ENTRY_SZ,
   // FIFO depth is 2 ^ BUFFER_SIZE_BITS long too
   parameter FIFO_WIDTH = 16,
+  // How many cycles we wait for FIFO to accept a packet
+  parameter FIFO_INSERT_TRIES = 8,
   // For testing
 `ifdef IS_QUARTUS
   parameter BOGUS_GENERATOR_DELAY = 2_000
@@ -226,7 +228,7 @@ always_ff @(posedge clk_rx) begin
 
       if (local_count == 3) begin
         // All done
-        local_count <= '0;
+        local_count <= FIFO_INSERT_TRIES;
         state <= S_FIFO;
       end else begin
         local_count <= local_count + 1'd1;
@@ -236,9 +238,29 @@ always_ff @(posedge clk_rx) begin
 
     S_FIFO: begin
       ram_wr_ena <= '0;
-      // FIXME: CODE ME
-      state <= S_WAIT;
-      local_count <= BOGUS_GENERATOR_DELAY;
+      // We insert into our FIFO if it's not full,
+      // or wait another cycle, until we've waited long
+      // enough and have to give up
+      if (!fifo_wr_full) begin
+        fifo_wr_req <= '1;
+        fifo_wr_data <= {
+          1'b0, // CRC error
+          1'b0, // Frame error
+          cur_buf,
+          byte_pos
+        };
+      end else if (local_count == '0) begin
+        // We give up
+        dropped_packets <= dropped_packets + 1'd1;
+      end else begin
+        local_count <= local_count - 1'd1;
+      end
+
+      // We're done, let's get IDLEing
+      if (!fifo_wr_full || local_count == '0) begin
+        state <= S_WAIT;
+        local_count <= BOGUS_GENERATOR_DELAY;
+      end
     end // S_FIFO
 
     default: begin

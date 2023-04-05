@@ -65,7 +65,7 @@ initial begin
 
   // Stop the simulation at appropriate point
   // #(period * 2 * 10000);
-  #40000; // 40µs is enough to fill the FIFO
+  #50000; // 40µs is enough to fill the FIFO and drop a few packets
   $display("Ending simulation @ ", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!
