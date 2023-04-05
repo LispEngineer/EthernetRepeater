@@ -26,7 +26,8 @@ module lcd_module #(
   parameter PREP_COUNT = 24'd3,      // 60ns at 50MHz (>= 40ns)
   parameter EN_COUNT   = 24'd12,     // 240ns at 50MHz (>= 230ns)
   parameter EN_HOLD    = 24'd2,      // 40ns at 50MHz (>= 10ns)
-  parameter DELAY      = 24'd82_000  // Default delay: 1,640,000ns (1.64ms) at 50MHz (>= 40µs to 1.64ms)
+  parameter DELAY      = 24'd82_000, // Default delay: 1,640,000ns (1.64ms) at 50MHz (>= 40µs to 1.64ms)
+  parameter MOVE_DELAY = 24'd2_500   // 37µs required, give it 50
 ) (
   // Our appropriate speed clock input (copied to output)
   input  logic clk,
@@ -40,12 +41,18 @@ module lcd_module #(
   output logic       rw, // 1 = Read, 0 = Write
   output logic       en, // H to L signals it to read the other pins
 
-  // Interface to this module
+  // Low Level Interface to this module
   output logic        busy,
   input  logic        activate, // Signal when !busy and then deactivate
   input  logic        is_data,  // Equivalent to the rw
   input  logic  [7:0] data_inst,// Character data or instruction to shift out (the only current operation)
-  input  logic [23:0] delay     // If not zero, delay this many cycles before being unbusy
+  input  logic [23:0] delay,    // If not zero, delay this many cycles before being unbusy
+
+  // High Level Interface to this module
+  input logic         char_activate,
+  input logic         move_row,
+  input logic   [3:0] move_col
+  //                  data_inst has the character to draw
 );
 
 `ifdef IS_QUARTUS
@@ -60,7 +67,8 @@ localparam S_IDLE     = 4'd0,
            S_PREP     = 4'd1, // Set up the outputs, wait
            S_SET_EN   = 4'd2, // Turn on enable, wait
            S_TRANS_EN = 4'd3, // Turn off enable, wait
-           S_DELAY    = 4'd4; // Wait for the command to finish
+           S_DELAY    = 4'd4, // Wait for the command to finish
+           S_SAVED    = 4'd5; // Send the saved character
 logic [3:0] state = S_IDLE;
 
 // Our counter
@@ -73,6 +81,13 @@ logic [3:0] post_delay_state;
 logic        r_is_data;
 logic  [7:0] r_data_inst;
 logic [23:0] r_delay;
+// Character saved for multi-instruction sequence
+logic  [7:0] r_saved_char;
+
+// Reposition cursor for DDRAM
+// Set DDRAM address - data 7 = 1; data 6 = row 0 or 1; data 5-0 are column
+logic [7:0] move_instruction;
+assign move_instruction = {1'b1, move_row, 2'b0, move_col};
 
 always_ff @(posedge clk) begin
 
@@ -106,8 +121,44 @@ always_ff @(posedge clk) begin
         else
           r_delay <= delay;
         post_delay_state <= S_IDLE;
+
+      end else if (char_activate) begin
+        // FIXME: Consolidate some of this with the above
+        state <= S_PREP;
+        count <= '0;
+        busy <= '1;
+        // Just in case it helps to set this up a bit earlier -
+        // we will first send the instruction to move the cursor:
+        // Set DDRAM address - data 7 = 1; data 6 = row 0 or 1; data 5-0 are column
+        data_e <= '1;
+        data_o <= move_instruction;
+        rs <= '0; // Sending an instruction
+        rw <= '0; // We always are 0 - writing
+        // Save our inputs
+        r_data_inst <= move_instruction;
+        r_is_data <= '0;
+        r_delay <= MOVE_DELAY;
+        post_delay_state <= S_SAVED;
+        r_saved_char <= data_inst;
       end
     end // S_IDLE
+
+    S_SAVED: begin ////////////////////////////////////////////////////////////////////
+      // Like activate, but for sending a saved character
+      state <= S_PREP;
+      count <= '0;
+      busy <= '1;
+      // Just in case it helps to set this up a bit earlier
+      data_e <= '1;
+      data_o <= r_saved_char;
+      rs <= '1; // Is always a data character
+      rw <= '0; // We always are 0 - writing
+      // Save our inputs
+      r_data_inst <= r_saved_char;
+      r_is_data <= '1;
+      r_delay <= MOVE_DELAY; // Technically a little longer than default by 4µs
+      post_delay_state <= S_IDLE;
+    end
 
     S_PREP: begin /////////////////////////////////////////////////////////////////////
       // Prepare the data to be shown when EN is raised

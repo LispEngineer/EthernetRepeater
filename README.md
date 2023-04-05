@@ -153,6 +153,10 @@ added by HSMC card. Some useful features:
   * Can we get extra bits before the SFD such that the 1011 comes non-nibble
     or non-byte aligned?
 
+* Quartus is ignoring my GLOBAL_CLOCK settings for a few of the clocks.
+  [This](https://www.intel.com/content/www/us/en/programmable/quartushelp/14.1/mergedProjects/msgs/msgs/wfygr_fygr_user_global_ignored.htm) talks about it
+  but doesn't really explain why.
+
 ## Known Bugs
 
 * Sometimes I have to send the MDIO request a few times to get it to respond
