@@ -186,7 +186,7 @@ localparam CRC_XOR_OUT = 32'hFFFF_FFFF;
 localparam CRC_CHECK = 32'hCBF4_3926;
 
 data_packet data_packet (
-  .addr(count[6:0]),
+  .addr(count[5:0]),
   .val(current_data)
 );
 

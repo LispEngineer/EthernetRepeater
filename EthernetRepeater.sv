@@ -338,6 +338,24 @@ always_comb begin
   FL_RST_N = '0;
   FL_WE_N = '0;
   FL_WP_N = '0;
+
+	NET2_GTX_CLK = '0;
+	NET2_MDC = '0;
+	NET2_RESETN = '1; // Take it out of reset
+	NET2_TX_D = '0;
+	NET2_S_TX_N = '0;
+	NET2_S_TX_P = '0;
+	NET2_TX_EN = '0;
+	NET2_TX_ER = '0;
+	NET3_GTX_CLK = '0;
+	NET3_MDC = '0;
+	NET3_RESETN = '1; // Take it out of reset
+	NET3_TX_D = '0;
+	NET3_S_TX_N = '0;
+	NET3_S_TX_P = '0;
+	NET3_TX_EN = '0;
+	NET3_TX_ER = '0;
+
 end
 
 // Tristate unused inouts
@@ -369,6 +387,9 @@ always_comb begin
   // DVI_TX_DDCSCL = 'z;
   // DVI_TX_DDCSDA = 'z;
   // DVI_TX_SDA = 'z;
+  NET2_MDIO = 'z;
+	NET3_MDIO = 'z;
+
 `endif
 end
 
@@ -584,7 +605,10 @@ rgmii_tx rgmii_tx1 (
   .tx_data_h(tx_data_h),
   .tx_data_l(tx_data_l),
   .tx_ctl_h(tx_ctl_h),
-  .tx_ctl_l(tx_ctl_l)
+  .tx_ctl_l(tx_ctl_l),
+
+  // Debug ports
+  .crc_out()
 );
 
 assign ENET1_TX_ER = '0;
