@@ -37,8 +37,21 @@ logic crc_error, frame_error;
 logic [2:0] buf_num;
 logic [10:0] pkt_len;
 
+logic ram_rd_ena;
+logic [13:0] ram_rd_addr;
+logic [7:0] ram_rd_data;
+logic [2:0] read_buf;
+logic [10:0] read_pos;
+logic [10:0] read_end; // Last pos we read, to skip the FCS
+
+// We want to skip the preamble
+localparam READ_START = 8;
+// We probably want to skip the CRC
+localparam FCS_LEN = 4;
+
 // Break out the FIFO contents
 assign {crc_error, frame_error, buf_num, pkt_len} = stored_fifo_data;
+assign ram_rd_addr = {read_buf, read_pos};
 
 rgmii_rx dut (
   .clk_rx(clk),
@@ -53,9 +66,9 @@ rgmii_rx dut (
 
   // RAM read interface
   .clk_ram_rd(clk),
-  .ram_rd_ena(), // Read enable
-  .ram_rd_addr(), // Read address
-  .ram_rd_data(), // Read data output
+  .ram_rd_ena(ram_rd_ena), // Read enable
+  .ram_rd_addr(ram_rd_addr), // Read address
+  .ram_rd_data(ram_rd_data), // Read data output
 
   // FIFO read interface
   .clk_fifo_rd(clk), // Usually same as clk_ram_rd
@@ -94,13 +107,27 @@ always_ff @(posedge clk) begin
     end
   end
   2: begin
-    // DO something with the saved data
-    // FIXME: We apparently need more time to read from FIFO,
-    // since the first read is data 0x0
+    // DO something with the saved data:
+    // Set up to read through all the RAM
     $display("Doing something with FIFO data: %0h @ %0t", stored_fifo_data, $time);
     $display("Buffer %0h, Length %0h", buf_num, pkt_len);
-    state <= 0;
-    // TODO: Print the bytes
+    ram_rd_ena <= '1;
+    read_buf <= buf_num;
+    read_pos <= READ_START; // Skip Preamble & SFD
+    read_end <= pkt_len - FCS_LEN; // Skip FCS/CRC
+    state <= 3;
+    $write("Reading bytes: ");
+  end
+  3: begin
+    // Print the whole packet, one byte at a time, minus FCS
+    $write("%2h ", ram_rd_data);
+    if (read_pos == read_end) begin
+      $display(" END @ %0t", $time);
+      state <= 0;
+      ram_rd_ena <= '0;
+    end else begin
+      read_pos <= read_pos + 1'd1;
+    end
   end
   endcase
 end

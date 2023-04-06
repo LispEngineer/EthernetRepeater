@@ -75,12 +75,19 @@ added by HSMC card. Some useful features:
 
 * Built-in LCD
   * Can send a full screen of characters from switches
+  * (Untested) Can put a character anywhere
+
+* RGMII Receive Capability
+  * FIFO for putting notifications fully received packets into
+  * RAM buffer for putting full packet data into (including preamble/SFD for now)
+  * "Bogus" test implementation of receiver to exercise RAM, FIFO
+    
 
 ## Next Steps
 
 * LCD Manager
+  * TEST: Send a letter with a specific screen location
   * Power-up sequence required
-  * Send a letter with a specific screen location
   * Prepare to use it to display packet contents (!!!)
 
 * Manual management interface
@@ -90,17 +97,18 @@ added by HSMC card. Some useful features:
     * Show it on LEDR15-0
   * Write switches SW15-0 to the stored register (Key 2)
     * Show current switch 15-0 settings always on HEX3-0
-    * Show SW4-0 on HEX7-6
+    * (Show SW4-0 on HEX7-6) (Huh? Why?)
   * Hardware reset (Key 3)
 
-* Write the 16x2 character interface so we can show more info
-
 * Management state machine
+  * Set up PHY side tx/rx clock shift handling
+    * Read reg, write reg, read reg, write reg, wait for soft reset
   * Queries MDIO for state periodically
   * Exports state flags based on the state read
     * Link up & ready
     * Speed
     * Duplex
+    * (Unnecessary for RGMII optional in-band state signaling?)
   * Could handle interrupts
   * Handle changing transmit speed as receive speed changes
 
@@ -119,12 +127,26 @@ added by HSMC card. Some useful features:
     * Adding an entry to the transmit FIFO
 
 * Simple RGMII RX interface
+  * Handle RGMII configuration frames; use to determine DDR RX
   * Handle all 3 speeds
   * Receive frame bytes into a RAM buffer
     * Rotate receives through multiple buffers
     * Check frame CRC
     * Include flags on the received frames
   * Handle non-nibble/byte aligned receives (?)
+  * Expand RAM size:
+    * Allow reads 32 or 64 bits at a time, but still write 1 byte at a time with byte selects
+    * Same, but write a word at a time
+    * Expand RAM size by 1 bit, when that Nth bit is set it signals
+      end of packet, and the other bits signify things like:
+      * CRC error
+      * Frame error
+      * Then we could send a "Receive begin" message on the FIFO and
+        the receiver could read from RAM the data as it is coming in.
+      * Or we could send a "Receive complete" message on the FIFO with
+        the final length and error information
+  * Build a streaming output (AXI-Stream?) when we are getting a packet
+    * Have an end of packet flag, which shows CRC and framing errors
 
 * Enable reduced preamble mode for Management Interface?
 
