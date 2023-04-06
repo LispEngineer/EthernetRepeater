@@ -44,6 +44,10 @@ logic [2:0] read_buf;
 logic [10:0] read_pos;
 logic [10:0] read_end; // Last pos we read, to skip the FCS
 
+logic [10:0] read_req; // We're requesting this byte this time
+// Use '1 as a sentinel saying "invalid seeing"
+logic [10:0] read_see; // We're seeing this byte this time - the req from last cycle
+
 // We want to skip the preamble
 localparam READ_START = 8;
 // We probably want to skip the CRC
@@ -118,21 +122,31 @@ always_ff @(posedge clk) begin
     read_end <= pkt_len - FCS_LEN; // Skip FCS/CRC
     // ram_rd_addr <= {buf_num, READ_START[10:0]}; // DOne above
     state <= 3;
+    // NOT next cycle, but the cycle after that we can read the data.
+    // NEXT cycle, the RAM will see the read enable and address,
+    // THEN it will output the data.
+    // BUT we have to pipeline if we want to read a byte each time.
+    // So, how do I know I'm reading a byte from 2 cycles ago?
     $write("Reading bytes: ");
+    read_req <= READ_START; // FIXME: Maybe we don't need read_req, just read_pos?
+    read_see <= '1; // Sentinel meaning "nothing"
   end
   3: begin
-    // Print the whole packet, one byte at a time, minus FCS
-    // TWO BUGS:
-    // 1. Prints 69 instead of 68 bytes
-    // 2. The first 2 bytes printed are junk
-    //    (is there read latency?)
-    $write("%2h ", ram_rd_data);
+    // Print the whole packet, one byte at a time, minus FCS (or with it, depending on settings above)
+    if (read_see == '1)
+      // We are not seeing any data yet
+      $write("<latency> ");
+    else
+      $write("%2h ", ram_rd_data);
+    // Next cycle we will see the request from the previous cycle
+    read_see <= read_req;
     if (read_pos == read_end) begin
       $display(" END @ %0t", $time);
       state <= 0;
       ram_rd_ena <= '0;
     end else begin
       read_pos <= read_pos + 1'd1;
+      read_req <= read_pos + 1'd1;
       // ram_rd_addr <= {buf_num, read_pos + 1'd1}; // Done above
     end
   end

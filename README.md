@@ -222,6 +222,10 @@ The readout on this seems to take 2 cycles, not one.
   * Cycle 2: It sents the output register
   * Cycle 3: You can see the data on the register's outputs
 
+I made two RAMs:
+* rx_ram_buffer - registered q output
+* rx_ram_buffer_fast - unregistered q output
+
 ## CRC Generator Modules
 
 Used the generated code from [this site](https://bues.ch/cms/hacking/crcgen)
