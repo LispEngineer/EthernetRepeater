@@ -82,6 +82,7 @@ logic fifo_wr_req;
 logic [FIFO_WIDTH-1:0] fifo_wr_data;
 
 // Instantiate our read & write port RAM
+`define USE_REGISTERED_OUTPUT_RAM
 `ifdef USE_REGISTERED_OUTPUT_RAM
 // This will have two cycle latency
 rx_ram_buffer

@@ -47,6 +47,12 @@ logic [10:0] read_end; // Last pos we want to see/process before quitting
 // Use '1 as a sentinel saying "invalid seeing"
 logic [10:0] read_see; // We're seeing this byte this time - the req from last cycle
 
+// Handle RAM with two cycle read latency
+`define TWO_CYCLE_LATENCY_RAM
+`ifdef TWO_CYCLE_LATENCY_RAM
+logic [10:0] read_hold;
+`endif
+
 // We want to skip the preamble
 localparam READ_START = 8;
 // We probably want to skip the CRC
@@ -97,6 +103,7 @@ always_ff @(posedge clk) begin
       // Takes a cycle to read the data from FIFO
     end
   end
+
   1: begin
     // Save the data from the FIFO once our latency is over
     fifo_rd_req <= '0;
@@ -109,6 +116,7 @@ always_ff @(posedge clk) begin
       $display("Waiting FIFO latency @ %0t", $time);
     end
   end
+
   2: begin
     // DO something with the saved data:
     // Set up to read through all the RAM
@@ -128,7 +136,11 @@ always_ff @(posedge clk) begin
     // So, how do I know I'm reading a byte from 2 cycles ago?
     $write("Reading bytes: ");
     read_see <= '1; // Sentinel meaning "nothing"
+`ifdef TWO_CYCLE_LATENCY_RAM
+    read_hold <= '1; // Our intermediate between read_pos and read_see
+`endif    
   end
+
   3: begin
     // Print the whole packet, one byte at a time, minus FCS (or with it, depending on settings above)
     if (read_see == '1)
@@ -136,15 +148,27 @@ always_ff @(posedge clk) begin
       $write("<latency> ");
     else
       $write("%2h:%2h ", read_see, ram_rd_data);
+`ifdef TWO_CYCLE_LATENCY_RAM
+    // We will see things in two cycles from when requested
+    read_see <= read_hold;
+    read_hold <= read_pos;
+`else
     // Next cycle we will see the request from the previous cycle (for a single cycle latency RAM)
     read_see <= read_pos;
+`endif
     // Quit when we see the final byte we want to process
     if (read_see == read_end) begin
       $display(" END (%0h) @ %0t", read_pos, $time);
       state <= 0;
       ram_rd_ena <= '0;
+      // NOTE: If we want to do anything with read_see, we should
+      // definitely register it and save it elsewhere because otherwise
+      // it is going to be overwritten!
     end else begin
       read_pos <= read_pos + 1'd1;
+      // FIXME: If the read_pos > read_end then disable read enable!
+      // (Maybe add a "disable at" value, and once read_pos reaches
+      // that, disable rd_ena - which is read_end + 1.)
     end
   end
   endcase
