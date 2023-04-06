@@ -29,9 +29,18 @@ always begin
   #(period) clk <= ~clk;
 end
 
+logic fifo_rd_empty;
+logic fifo_rd_req = '0;
+logic [15:0] fifo_rd_data;
+logic [15:0] stored_fifo_data;
+logic crc_error, frame_error;
+logic [2:0] buf_num;
+logic [10:0] pkt_len;
+
+// Break out the FIFO contents
+assign {crc_error, frame_error, buf_num, pkt_len} = stored_fifo_data;
 
 rgmii_rx dut (
-
   .clk_rx(clk),
   .reset(reset),
   .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing)
@@ -50,15 +59,47 @@ rgmii_rx dut (
 
   // FIFO read interface
   .clk_fifo_rd(clk), // Usually same as clk_ram_rd
-  .fifo_rd_empty(),
-  .fifo_rd_req(),
-  .fifo_rd_data()
+  .fifo_rd_empty(fifo_rd_empty),
+  .fifo_rd_req(fifo_rd_req),
+  .fifo_rd_data(fifo_rd_data)
 );
+
+// Build test bed that prints 32 characters received when we get a fifo.
+logic [2:0] state = '0;
+
+always_ff @(posedge clk) begin
+  case (state)
+  0: begin
+    // Wait for the fifo to be non-empty
+    if (!fifo_rd_empty) begin
+      fifo_rd_req <= '1;
+      state <= 1;
+      $display("Reading from FIFO @ %0t", $time);
+      // Takes a cycle to read the data from FIFO
+    end
+  end
+  1: begin
+    // Save the data from the FIFO
+    fifo_rd_req <= '0;
+    stored_fifo_data <= fifo_rd_data;
+    state <= 2;
+  end
+  2: begin
+    // DO something with the saved data
+    // FIXME: We apparently need more time to read from FIFO,
+    // since the first read is data 0x0
+    $display("Read FIFO data: %0h @ %0t", stored_fifo_data, $time);
+    $display("Buffer %0h, Length %0h", buf_num, pkt_len);
+    state <= 0;
+    // TODO: Print the bytes
+  end
+  endcase
+end
 
 
 // initialize test with a reset for 22 ns
 initial begin
-  $display("Starting Simulation @ ", $time);
+  $display("Starting Simulation @ %0t", $time);
   clk <= 1'b0;
   reset <= 1'b1; 
   #(reset_period) reset <= 1'b0;
@@ -66,7 +107,7 @@ initial begin
   // Stop the simulation at appropriate point
   // #(period * 2 * 10000);
   #50000; // 40µs is enough to fill the FIFO and drop a few packets
-  $display("Ending simulation @ ", $time);
+  $display("Ending simulation @ %0t", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!
 end
