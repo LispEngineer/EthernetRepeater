@@ -41,10 +41,9 @@ logic ram_rd_ena;
 logic [13:0] ram_rd_addr;
 logic [7:0] ram_rd_data;
 logic [2:0] read_buf;
-logic [10:0] read_pos;
-logic [10:0] read_end; // Last pos we read, to skip the FCS
+logic [10:0] read_pos; // We're requesting the byte at this address this cycle
+logic [10:0] read_end; // Last pos we want to see/process before quitting
 
-logic [10:0] read_req; // We're requesting this byte this time
 // Use '1 as a sentinel saying "invalid seeing"
 logic [10:0] read_see; // We're seeing this byte this time - the req from last cycle
 
@@ -119,8 +118,8 @@ always_ff @(posedge clk) begin
     // ram_read_addr is made up of the two things below - maybe it's too slow?
     read_buf <= buf_num;
     read_pos <= READ_START; // Skip Preamble & SFD
-    read_end <= pkt_len - FCS_LEN; // Skip FCS/CRC
-    // ram_rd_addr <= {buf_num, READ_START[10:0]}; // DOne above
+    // The address of the last byte we want to SEE before quitting
+    read_end <= pkt_len - FCS_LEN - 1'd1; // Skip FCS/CRC
     state <= 3;
     // NOT next cycle, but the cycle after that we can read the data.
     // NEXT cycle, the RAM will see the read enable and address,
@@ -128,7 +127,6 @@ always_ff @(posedge clk) begin
     // BUT we have to pipeline if we want to read a byte each time.
     // So, how do I know I'm reading a byte from 2 cycles ago?
     $write("Reading bytes: ");
-    read_req <= READ_START; // FIXME: Maybe we don't need read_req, just read_pos?
     read_see <= '1; // Sentinel meaning "nothing"
   end
   3: begin
@@ -137,17 +135,16 @@ always_ff @(posedge clk) begin
       // We are not seeing any data yet
       $write("<latency> ");
     else
-      $write("%2h ", ram_rd_data);
-    // Next cycle we will see the request from the previous cycle
-    read_see <= read_req;
-    if (read_pos == read_end) begin
-      $display(" END @ %0t", $time);
+      $write("%2h:%2h ", read_see, ram_rd_data);
+    // Next cycle we will see the request from the previous cycle (for a single cycle latency RAM)
+    read_see <= read_pos;
+    // Quit when we see the final byte we want to process
+    if (read_see == read_end) begin
+      $display(" END (%0h) @ %0t", read_pos, $time);
       state <= 0;
       ram_rd_ena <= '0;
     end else begin
       read_pos <= read_pos + 1'd1;
-      read_req <= read_pos + 1'd1;
-      // ram_rd_addr <= {buf_num, read_pos + 1'd1}; // Done above
     end
   end
   endcase
