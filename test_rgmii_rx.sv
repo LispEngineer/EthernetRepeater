@@ -66,6 +66,8 @@ rgmii_rx dut (
 
 // Build test bed that prints 32 characters received when we get a fifo.
 logic [2:0] state = '0;
+localparam FIFO_LATENCY = 2;
+logic [3:0] latency_count;
 
 always_ff @(posedge clk) begin
   case (state)
@@ -74,21 +76,28 @@ always_ff @(posedge clk) begin
     if (!fifo_rd_empty) begin
       fifo_rd_req <= '1;
       state <= 1;
-      $display("Reading from FIFO @ %0t", $time);
+      latency_count <= FIFO_LATENCY - 1;
+      $display("Requesting read from FIFO @ %0t", $time);
       // Takes a cycle to read the data from FIFO
     end
   end
   1: begin
-    // Save the data from the FIFO
+    // Save the data from the FIFO once our latency is over
     fifo_rd_req <= '0;
-    stored_fifo_data <= fifo_rd_data;
-    state <= 2;
+    if (latency_count == 0) begin
+      stored_fifo_data <= fifo_rd_data;
+      state <= 2;
+      $display("Reading FIFO data now, %0h @ %0t", fifo_rd_data, $time);
+    end else begin
+      latency_count <= latency_count - 1'd1;
+      $display("Waiting FIFO latency @ %0t", $time);
+    end
   end
   2: begin
     // DO something with the saved data
     // FIXME: We apparently need more time to read from FIFO,
     // since the first read is data 0x0
-    $display("Read FIFO data: %0h @ %0t", stored_fifo_data, $time);
+    $display("Doing something with FIFO data: %0h @ %0t", stored_fifo_data, $time);
     $display("Buffer %0h, Length %0h", buf_num, pkt_len);
     state <= 0;
     // TODO: Print the bytes
