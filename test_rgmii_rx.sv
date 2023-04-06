@@ -47,11 +47,11 @@ logic [10:0] read_end; // Last pos we read, to skip the FCS
 // We want to skip the preamble
 localparam READ_START = 8;
 // We probably want to skip the CRC
-localparam FCS_LEN = 4;
+localparam FCS_LEN = 0; // FIXME: Let's not skip it for now while debugging
 
 // Break out the FIFO contents
 assign {crc_error, frame_error, buf_num, pkt_len} = stored_fifo_data;
-assign ram_rd_addr = {read_buf, read_pos};
+// assign ram_rd_addr = {read_buf, read_pos};
 
 rgmii_rx dut (
   .clk_rx(clk),
@@ -112,14 +112,20 @@ always_ff @(posedge clk) begin
     $display("Doing something with FIFO data: %0h @ %0t", stored_fifo_data, $time);
     $display("Buffer %0h, Length %0h", buf_num, pkt_len);
     ram_rd_ena <= '1;
+    // ram_read_addr is made up of the two things below - maybe it's too slow?
     read_buf <= buf_num;
     read_pos <= READ_START; // Skip Preamble & SFD
     read_end <= pkt_len - FCS_LEN; // Skip FCS/CRC
+    ram_rd_addr <= {buf_num, READ_START[10:0]};
     state <= 3;
     $write("Reading bytes: ");
   end
   3: begin
     // Print the whole packet, one byte at a time, minus FCS
+    // TWO BUGS:
+    // 1. Prints 69 instead of 68 bytes
+    // 2. The first 2 bytes printed are junk
+    //    (is there read latency?)
     $write("%2h ", ram_rd_data);
     if (read_pos == read_end) begin
       $display(" END @ %0t", $time);
@@ -127,6 +133,7 @@ always_ff @(posedge clk) begin
       ram_rd_ena <= '0;
     end else begin
       read_pos <= read_pos + 1'd1;
+      ram_rd_addr <= {buf_num, read_pos + 1'd1};
     end
   end
   endcase

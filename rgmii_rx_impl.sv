@@ -225,7 +225,7 @@ always_ff @(posedge clk_rx) begin
       ram_wr_addr <= ram_pos;
       // Advance to the next byte
       byte_pos <= byte_pos + 1'd1;
-      ram_wr_data <= 8'hBB;
+      ram_wr_data <= 8'hBB + local_count[1:0];
 
       if (local_count == 3) begin
         // All done
