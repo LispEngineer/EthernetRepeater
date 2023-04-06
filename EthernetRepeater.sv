@@ -663,7 +663,278 @@ always_ff @(posedge CLOCK_50) begin
 end
 
 
+// ETHERNET RECEIVER TOP LEVEL ////////////////////////////////////////////////
+
+
+// Wait at least 2s before using the LCD
+localparam LCD_POWER_ON_WAIT = 32'd100_000_000;
+logic [31:0] lcd_power_on = '0;
+logic lcd_available = '0;
+
+// Wait 20ms before we enable our LCD
+always_ff @(posedge CLOCK_50) begin
+  // FIXME: Add a reset
+  if (!lcd_available) begin
+    if (lcd_power_on == LCD_POWER_ON_WAIT) begin
+      lcd_available <= '1;
+    end else begin
+      lcd_power_on <= lcd_power_on + 1'd1;
+    end
+  end // lcd_available
+end
+
+
+// 1. Instantiate the Ethernet Receiver
+// 2. Listening for FIFO not empty
+// 3. When it gets a FIFO entry, output the Ethernet packet payload to LCD
+//    (everything after the Ethernet header - 2x MAC & EtherType)
+
+// FIFO
+logic fifo_rd_empty;
+logic fifo_rd_req = '0;
+logic [15:0] fifo_rd_data; // Output from FIFO
+logic [15:0] stored_fifo_data; // Safely stored data from FIFO for reuse
+// Break out the FIFO data
+logic fifo_crc_error, fifo_frame_error; // READ ONLY
+logic [2:0] fifo_buf_num; // READ ONLY
+logic [10:0] fifo_pkt_len; // READ ONLY
+assign {fifo_crc_error, fifo_frame_error, fifo_buf_num, fifo_pkt_len} = stored_fifo_data;
+
+localparam FIFO_LATENCY = 4'd2; // FIFO read latency
+logic [3:0] fifo_latency_count;
+
+
+// Receiver RAM buffer
+logic ram_rd_ena;
+logic [13:0] ram_rd_addr;
+logic [7:0] ram_rd_data; // READ ONLY
+// Break out the RAM address into a buffer # and byte position
+logic [2:0] ram_read_buf;
+logic [10:0] ram_read_pos; // 2k max packet size - 11 bits
+assign ram_rd_addr = {ram_read_buf, ram_read_pos};
+
+// We will skip reading the preamble, SFD, and Ethernet header
+localparam RAM_READ_START = 11'd7 + 11'd1 + 11'd6 + 11'd6 + 11'd2;
+logic [10:0] ram_read_last; // Last ram_read_pos to process before ending
+
+// Which byte should we display? (Retrieved from Eth RX RAM earlier)
+logic [7:0] byte_to_display; 
+
+
+rgmii_rx ethernet_rx (
+  .clk_rx(CLOCK_50), // FIXME: We are using BOGUS Ethernet Receiver for now
+  .reset('0), // FIXME: Implement
+  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing)
+
+  // Inputs from PHY (after DDR conversion)
+  // FIXME: Connect these when not using BOGUS
+  .rx_ctl_h('0), // RX_DV
+  .rx_ctl_l('0), // RX_ER XOR RX_DV
+  .rx_data_h('0),
+  .rx_data_l('0),
+
+  // RAM read interface
+  .clk_ram_rd(CLOCK_50),
+  .ram_rd_ena(ram_rd_ena), // Read enable
+  .ram_rd_addr(ram_rd_addr), // Read address
+  .ram_rd_data(ram_rd_data), // Read data output
+
+  // FIFO read interface
+  .clk_fifo_rd(CLOCK_50), // Usually same as clk_ram_rd
+  .fifo_rd_empty(fifo_rd_empty),
+  .fifo_rd_req(fifo_rd_req),
+  .fifo_rd_data(fifo_rd_data)
+);
+
+// Instantiate our LCD and necessary signals
+logic char_activate = '0;
+logic lcd_busy;
+
+// LCD PHY signals
+logic [7:0] lcd_data_o, lcd_data_i;
+logic lcd_data_e;
+
+// Where we want to draw a character
+logic [4:0] lcd_pos;
+
+
+lcd_module lcd_module (
+  .clk(CLOCK_50),
+  .reset('0),
+
+  // Interface to physical LCD module
+  .data_o(lcd_data_o),
+  .data_i(lcd_data_i),
+  .data_e(lcd_data_e),
+  .rs(LCD_RS),
+  .rw(LCD_RW),
+  .en(LCD_EN),
+
+  .busy(lcd_busy),
+
+  // Low level interface to this module - unused
+  .activate('0), // Never use the low-level input
+  .is_data('1),
+  .delay('0), // Default delay
+
+  // Character interface (which we use)
+  .char_activate(char_activate),
+  .move_row(lcd_pos[4]),
+  .move_col(lcd_pos[3:0]),
+  .data_inst(byte_to_display)
+);
+
+// Show a sign when our LCD is busy
+assign LEDR[17] = lcd_busy;
+
+// Create our bidi I/O buffers for the LCD data lines
+genvar i;
+generate
+  for (i = 0; i < 8; i = i + 1) begin: lcd_output_generator
+    ALTIOBUF_LCD ALTIOBUF_lcd_i (
+      .dataio  (LCD_DATA[i]),
+      .oe      (lcd_data_e),
+      .datain  (lcd_data_o[i]),
+      .dataout (lcd_data_i[i])
+    );
+  end
+endgenerate
+
+
+// State machine for reading FIFO and going to display memory
+
+// Define this if it takes two cycles to
+// read from Ethernet receive RAM buffer
+`define ERX_RAM_LATENCY_TWO
+
+localparam S_ERX_AWAIT_FIFO = 0,
+           S_ERX_GET_FIFO = 1,
+           S_ERX_START_READING = 2,
+           S_ERX_READ_BYTE = 3,
+           S_ERX_READ_LATENCY = 4,
+           S_ERX_SAVE_BYTE = 5,
+           S_ERX_WRITE_SCREEN = 6,
+           S_ERX_AWAIT_SCREEN = 7;
+
+logic [2:0] erx_state = S_ERX_AWAIT_FIFO;
+// TODO: Set an LED to erx_state != S_ERX_AWAIT_FIFO aka "receive busy"
+
+always_ff @(posedge CLOCK_50) begin
+  
+  if (!lcd_available) begin
+
+    // FIXME: CODE A RESET
+
+  end else begin
+
+    case (erx_state)
+
+    S_ERX_AWAIT_FIFO: begin //////////////////////////////////////////
+      // Wait for the fifo to be non-empty
+      if (!fifo_rd_empty) begin
+        fifo_rd_req <= '1;
+        erx_state <= S_ERX_GET_FIFO;
+        fifo_latency_count <= FIFO_LATENCY - 1'd1;
+        // Takes a while to read the data from FIFO
+      end
+  
+    end
+
+    S_ERX_GET_FIFO: begin //////////////////////////////////////////
+      // Save the data from the FIFO once our read latency is over
+      fifo_rd_req <= '0;
+      if (fifo_latency_count == 0) begin
+        stored_fifo_data <= fifo_rd_data;
+        erx_state <= S_ERX_READ_BYTE;
+      end else begin
+        fifo_latency_count <= fifo_latency_count - 1'd1;
+      end
+    end
+
+    S_ERX_START_READING: begin
+      // Prepare the RAM reading, and then start the read next cycle
+      ram_read_pos <= RAM_READ_START; // Skip reading header stuff, direct to Eth payload
+
+      // Calculate the last byte we want to read. For now, just ignore
+      // the packet length and just always pick 32 bytes (the size of
+      // the LCD). Since Eth data must always be > 32, this is fine.
+      ram_read_last <= RAM_READ_START + 11'd31; // Really, + 32 - 1
+
+      // Read the proper location (this and ram_read_pos make the final RAM address)
+      // THis does not change for the whole packet read.
+      ram_read_buf <= fifo_buf_num; // broken out from stored_fifo_data
+
+      // Which position in the LCD are we writing to?
+      lcd_pos <= '0;
+
+      erx_state <= S_ERX_READ_BYTE;
+    end
+
+    S_ERX_READ_BYTE: begin //////////////////////////////////////////
+      // Okay, now we have to set up reading all the data from
+      // the appropriate RAM buffer specified in the FIFO saved data
+      // and dump it to the LCD, one character at a time.
+
+      // Enable reads from RAM
+      ram_rd_ena <= '1;
+
+      // TODO: If we don't have two-cycle latency on the RAM, skip
+      // directly to SAVE_BYTE
+      erx_state <= S_ERX_READ_LATENCY;
+    end
+
+    S_ERX_READ_LATENCY: begin //////////////////////////////////////////
+      // One cycle latency, if necessary
+      ram_rd_ena <= '0;
+      erx_state <= S_ERX_READ_LATENCY;
+    end
+
+    S_ERX_SAVE_BYTE: begin ////////////////////////////////////////////
+      // Read latency is over, we should have the byte ready now.
+      // Save it and begin processing next state. (Okay, we could
+      // technically combine those states, but whatever.)
+      ram_rd_ena <= '0; // In case we are in 1-cycle latency RAM
+      byte_to_display <= ram_rd_data;
+      erx_state <= S_ERX_AWAIT_SCREEN;
+    end
+
+    S_ERX_AWAIT_SCREEN: begin //////////////////////////////////////////
+      // We got our byte to write. Wait for screen to be ready, then
+      // submit our request to write the byte.
+      if (!lcd_busy) begin
+        erx_state <= S_ERX_WRITE_SCREEN;
+        char_activate <= '1;
+        // byte_to_display and lcd_pos should already be ready
+      end
+    end
+
+    S_ERX_WRITE_SCREEN: begin //////////////////////////////////////////
+      // Disable our write and wait for screen to be not busy
+      char_activate <= '0;
+      
+      // Check if we're done
+      if (ram_read_pos == ram_read_last) begin
+        // We displayed the whole packet (well, 32 bytes of it)
+        erx_state <= S_ERX_AWAIT_FIFO;
+      end else begin
+        // We have to read our next character
+        erx_state <= S_ERX_READ_BYTE;
+        lcd_pos <= lcd_pos + 1'd1;
+        ram_read_pos <= ram_read_pos + 1'd1;
+      end
+    end
+
+    default: erx_state <= S_ERX_AWAIT_FIFO;
+    endcase
+
+  end
+
+end
+
+
 // LCD DRIVER TOP LEVEL ///////////////////////////////////////////////////////
+
+`ifdef ENABLE_LCD_DRIVER_TEST
 
 // Wait at least 20ms before using the LCD
 logic [31:0] lcd_power_on = '0;
@@ -771,6 +1042,7 @@ end // Activate LCD module
 //   activate only if not busy currently
 //     or activate when not busy
 
+`endif // ENABLE_LCD_DRIVER_TEST
 
 
 // LED BLINKER TOP LEVEL //////////////////////////////////////////////////////
