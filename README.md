@@ -211,6 +211,17 @@ added by HSMC card. Some useful features:
 Remember - the `inout` must be a SystemVerilog `wire` and not `logic` or else it
 won't work.
 
+## ALTSYNCRAM
+
+The readout on this seems to take 2 cycles, not one.
+* [Post](https://community.intel.com/t5/Intel-Quartus-Prime-Software/Altsyncram-read-data/m-p/165214) about it
+* The Megafunction asks "Which ports should be registered"
+  * If you choose `Read Output Ports: q` then it adds a register to the output
+  * This seems to require two cycles to read the data:
+  * Cycle 1: Set the inputs for reading (read enable, read address)
+  * Cycle 2: It sents the output register
+  * Cycle 3: You can see the data on the register's outputs
+
 ## CRC Generator Modules
 
 Used the generated code from [this site](https://bues.ch/cms/hacking/crcgen)

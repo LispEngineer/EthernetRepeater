@@ -82,7 +82,14 @@ logic fifo_wr_req;
 logic [FIFO_WIDTH-1:0] fifo_wr_data;
 
 // Instantiate our read & write port RAM
-rx_ram_buffer	rx_ram_buffer_inst (
+`ifdef USE_REGISTERED_OUTPUT_RAM
+// This will have two cycle latency
+rx_ram_buffer
+`else
+// This will have one cycle latency as the outputs are unregistered
+rx_ram_buffer_fast
+`endif
+	rx_ram_buffer_inst (
 	.rdclock   ( clk_ram_rd ),
 	.wrclock   ( clk_rx ),
 
