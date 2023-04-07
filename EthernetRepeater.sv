@@ -754,6 +754,9 @@ assign ram_rd_addr = {ram_read_buf, ram_read_pos};
 localparam RAM_READ_START = 11'd7 + 11'd1 + 11'd6 + 11'd6 + 11'd2;
 logic [10:0] ram_read_last; // Last ram_read_pos to process before ending
 
+localparam RAM_READ_LATENCY = 4'd2;
+logic [3:0] ram_read_latency_count;
+
 // Which byte should we display? (Retrieved from Eth RX RAM earlier)
 logic [7:0] byte_to_display; 
 
@@ -840,23 +843,16 @@ endgenerate
 
 
 // State machine for reading FIFO and going to display memory
-
-// Define this if it takes two cycles to
-// read from Ethernet receive RAM buffer
-`define ERX_RAM_LATENCY_TWO
-
 localparam S_ERX_AWAIT_FIFO = 0,
            S_ERX_GET_FIFO = 1,
            S_ERX_START_READING = 2,
            S_ERX_READ_BYTE = 3,
            S_ERX_READ_LATENCY = 4,
-           S_ERX_READ_LATENCY2 = 5,
-           S_ERX_SAVE_BYTE = 6,
-           S_ERX_WRITE_SCREEN = 7,
-           S_ERX_AWAIT_SCREEN = 8;
+           S_ERX_SAVE_BYTE = 5,
+           S_ERX_WRITE_SCREEN = 6,
+           S_ERX_AWAIT_SCREEN = 7;
 
-logic [3:0] erx_state = S_ERX_AWAIT_FIFO;
-// TODO: Set an LED to erx_state != S_ERX_AWAIT_FIFO aka "receive busy"
+logic [2:0] erx_state = S_ERX_AWAIT_FIFO;
 
 logic [7:0] packets_received = '0;
 
@@ -932,21 +928,25 @@ always_ff @(posedge CLOCK_50) begin
       // Enable reads from RAM
       ram_rd_ena <= '1;
 
-      // TODO: If we don't have two-cycle latency on the RAM, skip
-      // directly to SAVE_BYTE
-      erx_state <= S_ERX_READ_LATENCY;
+      // If latency is 0, then we need to do skip the latency step.
+      // (Latency zero means we can get the byte next cycle, which
+      // COULD be possible if we had asynchronous SRAM.)
+      if (RAM_READ_LATENCY == '0) begin
+        erx_state <= S_ERX_SAVE_BYTE
+      end else begin
+        erx_state <= S_ERX_READ_LATENCY;
+        ram_read_latency_count <= RAM_READ_LATENCY - 1'd1;
+      end
     end
 
     S_ERX_READ_LATENCY: begin //////////////////////////////////////////
-      // One cycle latency, if necessary
+      // Add necessary latency before reading the output of the RAM
       ram_rd_ena <= '0;
-      erx_state <= S_ERX_READ_LATENCY2;
-    end
-
-    S_ERX_READ_LATENCY2: begin //////////////////////////////////////////
-      // One more cycle latency, if necessary
-      ram_rd_ena <= '0;
-      erx_state <= S_ERX_SAVE_BYTE;
+      if (ram_read_latency_count == '0) begin
+        erx_state <= S_ERX_SAVE_BYTE;
+      end else begin
+        ram_read_latency_count <= ram_read_latency_count - 1'd1;
+      end
     end
 
     S_ERX_SAVE_BYTE: begin ////////////////////////////////////////////
