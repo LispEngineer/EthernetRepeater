@@ -258,7 +258,8 @@ module EthernetRepeater(
 // Zero out unused outputs
 always_comb begin
   LEDG[6:5] = '0;
-  LEDR[16] = '0;
+  // LEDR[16] = '0;
+  /*
   HEX0 = '1; // These LED segments are OFF when logic 1
   HEX1 = '1;
   HEX2 = '1;
@@ -267,6 +268,7 @@ always_comb begin
   HEX5 = '1;
   HEX6 = '1;
   HEX7 = '1;
+  */
   // DVI_TX_CTL = '0;
   // DVI_TX_D = '0;
   // DVI_TX_CLK = '0;
@@ -392,6 +394,39 @@ always_comb begin
 
 `endif
 end
+
+////////////////////////////////////////////////////////////////////////////////
+// 7 Segment logic
+
+logic [6:0] ihex0 = '0;
+logic [6:0] ihex1 = '0;
+logic [6:0] ihex2 = '0;
+logic [6:0] ihex3 = '0;
+logic [6:0] ihex4 = '0;
+logic [6:0] ihex5 = '0;
+logic [6:0] ihex6 = '0;
+logic [6:0] ihex7 = '0;
+
+logic [31:0] hex_display;
+
+assign HEX0 = ~ihex0;
+assign HEX1 = ~ihex1;
+assign HEX2 = ~ihex2;
+assign HEX3 = ~ihex3;
+assign HEX4 = ~ihex4;
+assign HEX5 = ~ihex5;
+assign HEX6 = ~ihex6;
+assign HEX7 = ~ihex7;
+
+// Show the saved data on hex 0-3
+seven_segment hex0 (.num(hex_display[3:0]),   .hex(ihex0));
+seven_segment hex1 (.num(hex_display[7:4]),   .hex(ihex1));
+seven_segment hex2 (.num(hex_display[11:8]),  .hex(ihex2));
+seven_segment hex3 (.num(hex_display[15:12]), .hex(ihex3));
+seven_segment hex4 (.num(hex_display[19:16]), .hex(ihex4));
+seven_segment hex5 (.num(hex_display[23:20]), .hex(ihex5));
+seven_segment hex6 (.num(hex_display[27:24]), .hex(ihex6));
+seven_segment hex7 (.num(hex_display[31:28]), .hex(ihex7));
 
 ///////////////////////////////////////////////////////////////////////////////
 // Use Ethernet Management Interface
@@ -786,6 +821,7 @@ lcd_module lcd_module (
 
 // Show a sign when our LCD is busy
 assign LEDR[17] = lcd_busy;
+assign LEDR[16] = lcd_available;
 
 // Create our bidi I/O buffers for the LCD data lines
 genvar i;
@@ -819,6 +855,14 @@ localparam S_ERX_AWAIT_FIFO = 0,
 logic [2:0] erx_state = S_ERX_AWAIT_FIFO;
 // TODO: Set an LED to erx_state != S_ERX_AWAIT_FIFO aka "receive busy"
 
+logic [7:0] packets_received = '0;
+
+// Display internal info on our hex display
+assign hex_display[3:0] = {1'b0, erx_state};
+assign hex_display[7:4] = fifo_rd_empty ? '0 : 4'd1;
+assign hex_display[31:24] = packets_received;
+assign hex_display[23:16] = byte_to_display;
+
 always_ff @(posedge CLOCK_50) begin
   
   if (!lcd_available) begin
@@ -834,8 +878,10 @@ always_ff @(posedge CLOCK_50) begin
       if (!fifo_rd_empty) begin
         fifo_rd_req <= '1;
         erx_state <= S_ERX_GET_FIFO;
+        // Takes a while to read the data from FIFO - some latency
         fifo_latency_count <= FIFO_LATENCY - 1'd1;
-        // Takes a while to read the data from FIFO
+
+        packets_received <= packets_received + 1'd1;
       end
   
     end
@@ -886,7 +932,7 @@ always_ff @(posedge CLOCK_50) begin
     S_ERX_READ_LATENCY: begin //////////////////////////////////////////
       // One cycle latency, if necessary
       ram_rd_ena <= '0;
-      erx_state <= S_ERX_READ_LATENCY;
+      erx_state <= S_ERX_SAVE_BYTE;
     end
 
     S_ERX_SAVE_BYTE: begin ////////////////////////////////////////////
