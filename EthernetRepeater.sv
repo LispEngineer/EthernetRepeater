@@ -908,11 +908,11 @@ always_ff @(posedge CLOCK_50) begin
       // Calculate the last byte we want to read. For now, just ignore
       // the packet length and just always pick 32 bytes (the size of
       // the LCD). Since Eth data must always be > 32, this is fine.
-      // ram_read_last <= RAM_READ_START + 11'd31; // Really, + 32 - 1
+      ram_read_last <= RAM_READ_START + 11'd31; // Really, + 32 - 1
       // Test: Just do 5 bytes
       // ram_read_last <= RAM_READ_START + 11'd4;
       // Test: Just do the one byte!
-      ram_read_last <= RAM_READ_START;
+      // ram_read_last <= RAM_READ_START;
 
       // Read the proper location (this and ram_read_pos make the final RAM address)
       // THis does not change for the whole packet read.
