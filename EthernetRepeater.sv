@@ -850,11 +850,12 @@ localparam S_ERX_AWAIT_FIFO = 0,
            S_ERX_START_READING = 2,
            S_ERX_READ_BYTE = 3,
            S_ERX_READ_LATENCY = 4,
-           S_ERX_SAVE_BYTE = 5,
-           S_ERX_WRITE_SCREEN = 6,
-           S_ERX_AWAIT_SCREEN = 7;
+           S_ERX_READ_LATENCY2 = 5,
+           S_ERX_SAVE_BYTE = 6,
+           S_ERX_WRITE_SCREEN = 7,
+           S_ERX_AWAIT_SCREEN = 8;
 
-logic [2:0] erx_state = S_ERX_AWAIT_FIFO;
+logic [3:0] erx_state = S_ERX_AWAIT_FIFO;
 // TODO: Set an LED to erx_state != S_ERX_AWAIT_FIFO aka "receive busy"
 
 logic [7:0] packets_received = '0;
@@ -909,7 +910,9 @@ always_ff @(posedge CLOCK_50) begin
       // the LCD). Since Eth data must always be > 32, this is fine.
       // ram_read_last <= RAM_READ_START + 11'd31; // Really, + 32 - 1
       // Test: Just do 5 bytes
-      ram_read_last <= RAM_READ_START + 11'd4;
+      // ram_read_last <= RAM_READ_START + 11'd4;
+      // Test: Just do the one byte!
+      ram_read_last <= RAM_READ_START;
 
       // Read the proper location (this and ram_read_pos make the final RAM address)
       // THis does not change for the whole packet read.
@@ -936,6 +939,12 @@ always_ff @(posedge CLOCK_50) begin
 
     S_ERX_READ_LATENCY: begin //////////////////////////////////////////
       // One cycle latency, if necessary
+      ram_rd_ena <= '0;
+      erx_state <= S_ERX_READ_LATENCY2;
+    end
+
+    S_ERX_READ_LATENCY2: begin //////////////////////////////////////////
+      // One more cycle latency, if necessary
       ram_rd_ena <= '0;
       erx_state <= S_ERX_SAVE_BYTE;
     end
