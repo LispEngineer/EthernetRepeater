@@ -74,11 +74,11 @@ added by HSMC card. Some useful features:
     * Calculates the CRC on the fly and sends it, using [generated HDL](https://bues.ch/cms/hacking/crcgen)
 
 * Built-in LCD
-  * Can send a full screen of characters from switches
-  * (Untested) Can put a character anywhere
+  * Can put a character anywhere with single activation request
+  * (Cannot initialize screen yet! Works only if screen initialized by previous programming.)
 
 * RGMII Receive Capability
-  * FIFO for putting notifications fully received packets into
+  * FIFO for putting notifications of fully received packets into
   * RAM buffer for putting full packet data into (including preamble/SFD for now)
   * "Bogus" test implementation of receiver to exercise RAM, FIFO
     
@@ -163,9 +163,15 @@ added by HSMC card. Some useful features:
 * Green LEDs 5-0: Status (see code)
 * Green LED 7: PLL Lock status
 * KEY 3: Reset Ethernet PHY (only)
-* SW 4-0: Register address
+* SW 4-0: Register address for below (Register decimal 17 is interesting.)
 * KEY 0: Read from register in SW 4-0
 * KEY 1: Send fixed ARP packet
+* HEX 7-6: Packet count
+* HEX 5-4: Last byte read from RAM
+* HEX 3-2: RAM buffer # last read from FIFO
+* HEX 1: 1 if the FIFO is not empty, 0 if empty
+* HEX 0: Ethernet Receiver State Machine State #
+* LCD: 32 bytes from the Ethernet Receiver most recent packet
 
 
 ## Open Questions
