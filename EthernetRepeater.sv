@@ -700,6 +700,8 @@ end
 
 // ETHERNET RECEIVER TOP LEVEL ////////////////////////////////////////////////
 
+`define ENABLE_ETHERNET_RECEIVER
+`ifdef ENABLE_ETHERNET_RECEIVER
 
 // Wait at least 2s before using the LCD
 localparam LCD_POWER_ON_WAIT = 32'd100_000_000;
@@ -862,6 +864,7 @@ assign hex_display[3:0] = {1'b0, erx_state};
 assign hex_display[7:4] = fifo_rd_empty ? '0 : 4'd1;
 assign hex_display[31:24] = packets_received;
 assign hex_display[23:16] = byte_to_display;
+assign hex_display[15:8] = fifo_buf_num;
 
 always_ff @(posedge CLOCK_50) begin
   
@@ -891,7 +894,7 @@ always_ff @(posedge CLOCK_50) begin
       fifo_rd_req <= '0;
       if (fifo_latency_count == 0) begin
         stored_fifo_data <= fifo_rd_data;
-        erx_state <= S_ERX_READ_BYTE;
+        erx_state <= S_ERX_START_READING;
       end else begin
         fifo_latency_count <= fifo_latency_count - 1'd1;
       end
@@ -904,7 +907,9 @@ always_ff @(posedge CLOCK_50) begin
       // Calculate the last byte we want to read. For now, just ignore
       // the packet length and just always pick 32 bytes (the size of
       // the LCD). Since Eth data must always be > 32, this is fine.
-      ram_read_last <= RAM_READ_START + 11'd31; // Really, + 32 - 1
+      // ram_read_last <= RAM_READ_START + 11'd31; // Really, + 32 - 1
+      // Test: Just do 5 bytes
+      ram_read_last <= RAM_READ_START + 11'd4;
 
       // Read the proper location (this and ram_read_pos make the final RAM address)
       // THis does not change for the whole packet read.
@@ -955,18 +960,21 @@ always_ff @(posedge CLOCK_50) begin
     end
 
     S_ERX_WRITE_SCREEN: begin //////////////////////////////////////////
-      // Disable our write and wait for screen to be not busy
-      char_activate <= '0;
-      
-      // Check if we're done
-      if (ram_read_pos == ram_read_last) begin
-        // We displayed the whole packet (well, 32 bytes of it)
-        erx_state <= S_ERX_AWAIT_FIFO;
-      end else begin
-        // We have to read our next character
-        erx_state <= S_ERX_READ_BYTE;
-        lcd_pos <= lcd_pos + 1'd1;
-        ram_read_pos <= ram_read_pos + 1'd1;
+      // Disable our write once the screen takes up the
+      // activation flag.
+      if (lcd_busy) begin
+        char_activate <= '0;
+        
+        // Check if we're done
+        if (ram_read_pos == ram_read_last) begin
+          // We displayed the whole packet (well, 32 bytes of it)
+          erx_state <= S_ERX_AWAIT_FIFO;
+        end else begin
+          // We have to read our next character
+          erx_state <= S_ERX_READ_BYTE;
+          lcd_pos <= lcd_pos + 1'd1;
+          ram_read_pos <= ram_read_pos + 1'd1;
+        end
       end
     end
 
@@ -977,9 +985,11 @@ always_ff @(posedge CLOCK_50) begin
 
 end
 
+`endif // ENABLE_ETHERNET_RECEIVER
 
 // LCD DRIVER TOP LEVEL ///////////////////////////////////////////////////////
 
+// `define ENABLE_LCD_DRIVER_TEST
 `ifdef ENABLE_LCD_DRIVER_TEST
 
 // Wait at least 20ms before using the LCD

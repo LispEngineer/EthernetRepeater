@@ -90,7 +90,7 @@ rx_ram_buffer
 // This will have one cycle latency as the outputs are unregistered
 rx_ram_buffer_fast
 `endif
-	rx_ram_buffer_inst (
+rx_ram_buffer_inst (
 	.rdclock   ( clk_ram_rd ),
 	.wrclock   ( clk_rx ),
 
