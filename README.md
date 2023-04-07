@@ -152,7 +152,9 @@ added by HSMC card. Some useful features:
 
 * Simulate the PHY side of the Management Interface (for reads)
 * Simulate the MAC/PHY side of TX/RX
-
+* Put a decimal counter into the Bogus packet generator
+  * [Here](https://www.realdigital.org/doc/6dae6583570fd816d1d675b93578203d) is one BCD converter
+  * [Here](https://johnloomis.org/ece314/notes/devices/binary_to_BCD/bin_to_bcd.html) is a better description
 
 ## User Interface
 
@@ -194,7 +196,7 @@ added by HSMC card. Some useful features:
   just fine and lights up 1000, DUP, RX lights.
 
 
-# Notes on FPGA Resources
+# Notes on FPGA Resources / Megafunctions / Hard IP
 
 ## ALTIOBUF
 
@@ -647,6 +649,8 @@ The `HWCFG_MODE` could be changed
 
 
 # 16x2 LCD
+
+This is now working - see `lcd_module` - but doesn't do initialization yet.
 
 [Crystalfontz CFAH1602B-TMC-JP](https://www.crystalfontz.com/product/cfah1602btmcjp)
 * [Hitachi HD44780 Display Controller](https://www.sparkfun.com/datasheets/LCD/HD44780.pdf)

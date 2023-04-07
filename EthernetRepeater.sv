@@ -754,7 +754,8 @@ assign ram_rd_addr = {ram_read_buf, ram_read_pos};
 localparam RAM_READ_START = 11'd7 + 11'd1 + 11'd6 + 11'd6 + 11'd2;
 logic [10:0] ram_read_last; // Last ram_read_pos to process before ending
 
-localparam RAM_READ_LATENCY = 4'd2;
+// Match this to the setting in rgmii_rx.sv: USE_REGISTERED_OUTPUT_RAM
+localparam RAM_READ_LATENCY = 4'd1;
 logic [3:0] ram_read_latency_count;
 
 // Which byte should we display? (Retrieved from Eth RX RAM earlier)
@@ -932,7 +933,7 @@ always_ff @(posedge CLOCK_50) begin
       // (Latency zero means we can get the byte next cycle, which
       // COULD be possible if we had asynchronous SRAM.)
       if (RAM_READ_LATENCY == '0) begin
-        erx_state <= S_ERX_SAVE_BYTE
+        erx_state <= S_ERX_SAVE_BYTE;
       end else begin
         erx_state <= S_ERX_READ_LATENCY;
         ram_read_latency_count <= RAM_READ_LATENCY - 1'd1;

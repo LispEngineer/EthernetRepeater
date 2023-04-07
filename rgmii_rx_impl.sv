@@ -207,7 +207,7 @@ always_ff @(posedge clk_rx) begin
         ram_wr_data <= local_count == 12 ? 8'hC5 : 8'hDF;
       else
         // The payload is the buffer # as a current digit
-        ram_wr_data <= 8'h21 + cur_buf;
+        ram_wr_data <= 8'h30 + cur_buf; // 0x30 = ASCII '0'
 
       // We write 64 bytes of data then move to CRC
       if (local_count == 63) begin
