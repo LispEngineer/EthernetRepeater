@@ -442,8 +442,8 @@ logic mi_busy, mi_success;
 logic mi_activate = '0;
 
 // Register IDs
-localparam R_CONTROL = 5'd0,
-           R_STATUS = 5'd1,
+localparam R_CONTROL  = 5'd0,
+           R_STATUS   = 5'd1,
            R_PHY_ID_1 = 5'd2,
            R_PHY_ID_2 = 5'd3;
 
@@ -457,7 +457,7 @@ logic [15:0] mi_data_out = '0;
 // Set true if we ever saw busy from MI
 logic ever_busy_mi = '0;
 
-////////////////////////////////////////////////////////////////////////////////////
+//////////////
 
 // Use an ALTIOBUF with open-drain set for MDIO.
 // Datain means IN TO THE BUFFER, which would be OUT FROM THIS MODULE
@@ -484,7 +484,7 @@ always_comb begin
   LEDG[4] = ever_busy_mi;
 end
 
-////////////////////////////////////////////////////////////////////////////////////
+///////////////
 
 
 // Instantiate one MII Management Interface
@@ -514,13 +514,75 @@ mii_management_interface #(
 );
 
 
+/*
+* Manual management interface
+  * Store the register # from the switches SW4-0 (Key 0)
+  * Read the stored register (Key 1)
+    * Show it on LEDR15-0
+  * Write switches SW15-0 to the stored register (Key 2)
+    * Show current switch 15-0 settings always on HEX3-0
+    * (Show SW4-0 on HEX7-6) (Huh? Why?)
+  * Hardware reset (Key 3)
 
-// Read and display status when a button is pushed, for the specified
-// register from switches 4:0.
-// Note: "Each push-button switch provides a high logic level when it is not pressed,
+  Implemented:
+  * Show stored register in Hex 7-6
+  * Show received register data on Hex 3-0
+*/
+
+// BUTTON 0 ////////////////////////////////////////
+
+// Show the stored register ID in Hex 7-6
+assign hex_display[31:24] = mi_register;
+assign hex_display[15:0] = mi_data_out;
+
+// Note: "Each push-button switch provides a HIGH logic level when it is not pressed,
 //        and provides a low logic level when depressed."
 logic [3:0] last_key = '1;
 logic last_mi_busy = '0;
+
+
+// Read stored register on button 1
+always_ff @(posedge CLOCK_50) begin
+  last_key <= KEY;
+
+  // TODO: Handle reset
+
+  if (!mi_busy && last_mi_busy) begin
+    // We need to handle the completion of a command
+    // Nothing really to do
+
+  end else if (mi_busy && mi_activate) begin
+    // Command just started
+    mi_activate <= '0;
+  end else if (mi_busy) begin
+    // The MI is busy
+  end else if (mi_activate) begin
+    // Do nothing
+  end else if (!mi_busy && !mi_activate && !KEY[0] && KEY[0] != last_key[0]) begin
+    // We're not busy, not awaiting activation, and the key was just pressed
+    // (remember key down reports logic 0)
+    // Save the switches into our saved register
+    mi_register <= SW[4:0];
+  end else if (!mi_busy && !mi_activate && !KEY[1] && KEY[1] != last_key[1]) begin
+    // Activate a read
+    mi_activate <= '1;
+    mi_read <= '1;
+    // mi_register is already set
+  end else if (!mi_busy && !mi_activate && !KEY[2] && KEY[2] != last_key[2]) begin
+    // Activate a write
+    mi_activate <= '1;
+    mi_read <= '0;
+    mi_data_out <= SW[15:0];
+    // mi_register is already set
+  end
+
+end // MDIO Button Handler
+
+
+
+`ifdef OLD_MDIO_INTERFACE
+// Read and display status when a button is pushed, for the specified
+// register from switches 4:0.
 
 always_ff @(posedge CLOCK_50) begin
   last_key <= KEY;
@@ -550,6 +612,7 @@ always_ff @(posedge CLOCK_50) begin
   end
 
 end
+`endif
 
 
 
@@ -563,6 +626,8 @@ end
 //
 // At startup, Register 20.1 is 0 (no delay for TXD outputs)
 // and Register 20.7 is 0 (no added delay for RX_CLK)
+
+`ifdef ENABLE_ETHERNET_TRANSMITTER
 
 logic clock_eth_tx, clock_eth_tx_shifted, clock_eth_tx_shifted2, clock_eth_tx_lock;
 
@@ -697,10 +762,12 @@ always_ff @(posedge CLOCK_50) begin
 
 end
 
+`endif // ENABLE_ETHERNET_TRANSMITTER
+
 
 // ETHERNET RECEIVER TOP LEVEL ////////////////////////////////////////////////
 
-`define ENABLE_ETHERNET_RECEIVER
+// `define ENABLE_ETHERNET_RECEIVER
 `ifdef ENABLE_ETHERNET_RECEIVER
 
 // Wait at least 2s before using the LCD

@@ -57,8 +57,9 @@ module lcd_module #(
 
 `ifdef IS_QUARTUS
 // Questa doesn't like these two lines:
-// ** Error (suppressible): lcd_module.sv(77): (vlog-7061) Variable 'data_e' driven in an always_ff block, 
-//    may not be driven by any other process. See lcd_module.sv(52).
+// ** Error (suppressible): (vlog-7061) Variable 'data_e' driven in an always_ff block, 
+//    may not be driven by any other process.
+// See: https://verificationacademy.com/forums/systemverilog/error-suppressible-vlog-7061-alwaysff-modelsim
 initial busy = '0;
 initial data_e = '0;
 `endif

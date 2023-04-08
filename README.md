@@ -81,7 +81,17 @@ added by HSMC card. Some useful features:
   * FIFO for putting notifications of fully received packets into
   * RAM buffer for putting full packet data into (including preamble/SFD for now)
   * "Bogus" test implementation of receiver to exercise RAM, FIFO
-    
+
+* Manual management interface
+  * Store the register # from the switches SW4-0 (Key 0)
+    * Show it on the HEX7-6
+  * Read the stored register (Key 1)
+    * Show it on LEDR15-0
+    * Show it on HEX3-0
+  * Write switches SW15-0 to the stored register (Key 2)
+  * Hardware reset (Key 3)
+
+
 
 ## Next Steps
 
@@ -89,16 +99,6 @@ added by HSMC card. Some useful features:
   * TEST: Send a letter with a specific screen location
   * Power-up sequence required
   * Prepare to use it to display packet contents (!!!)
-
-* Manual management interface
-  * Store the register # from the switches SW4-0 (Key 0)
-    * Show it on the HEX5-4
-  * Read the stored register (Key 1)
-    * Show it on LEDR15-0
-  * Write switches SW15-0 to the stored register (Key 2)
-    * Show current switch 15-0 settings always on HEX3-0
-    * (Show SW4-0 on HEX7-6) (Huh? Why?)
-  * Hardware reset (Key 3)
 
 * Management state machine
   * Set up PHY side tx/rx clock shift handling
@@ -567,6 +567,18 @@ Std Table 22-6 lists the registers.
 minimum of 10 ns of hold time referenced to the rising edge of MDC"
 * "When the MDIO signal is sourced by the PHY, it is sampled by the STA synchronously with respect to the
 rising edge of MDC."
+
+## Learnings
+
+* Hardware reset will set all register values to default
+  * So if you do hardware reset, after setting Register 20 bits 7 & 1, you
+    need to reset them
+* The link down MAC RX interface speed seems to depend on Register 20 bits 6-4,
+  which defaults to 110 on my DE2-115
+
+
+## Questions
+
 
 ## ETHERNET-HSMC Card
 
