@@ -50,17 +50,19 @@ module eth_phy_88e1111_controller #(
   input  logic [15:0] mii_data_out,    // Data to send when !read
   output logic [15:0] mii_data_in,     // Data read when read
 
-  // Outputs from our controller
+  // Outputs from our PHY
   output logic speed_10,
   output logic speed_100,
   output logic speed_1000,
   output logic full_duplex,
   output logic connected,
+
   // Assert this anytime we failed to get expected response in configuration
+  output logic configured,  // When RX and TX are ready to be used
   output logic config_error,
 
   // Debugging outputs
-  output logic [5:0] d_state,
+  output logic  [5:0] d_state,
   output logic [15:0] d_reg0,
   output logic [15:0] d_reg20,
   output logic [15:0] d_seen_states,
@@ -72,6 +74,7 @@ initial config_error <= '0;
 initial connected <= '0;
 initial d_seen_states <= '0;
 initial d_soft_reset_checks <= '0;
+initial configured <= '0;
 
 logic reset_into_mii = '0;
 logic c_mii_busy;
@@ -172,6 +175,8 @@ always_ff @(posedge clk) begin
     reset_into_mii <= '1;
     busy <= '1;
     success <= '0;
+
+    configured <= '0;
     config_error <= '0;
 
     d_seen_states <= '0;
@@ -193,6 +198,7 @@ always_ff @(posedge clk) begin
       busy <= '1;
       success <= '0;
       config_error <= '0;
+      configured <= '0;
       if (delay_counter == '0) begin
         phy_reset <= '0;
         reset_into_mii <= '1; // We don't start MDIO/MDC until after PHY reset is down a while
@@ -262,6 +268,7 @@ always_ff @(posedge clk) begin
     S_CUSTOMER_IDLE: begin ///////////////////////////////////////////
       // Pass through everything we get from outside, but just one
       // cycle delayed
+      configured <= '1; // Clearly we're done by now since we're in pass-thru mode
       busy <= c_mii_busy;
       success <= c_mii_success;
       mii_data_in <= c_mii_data_in; // data IN is read IN from the PHY

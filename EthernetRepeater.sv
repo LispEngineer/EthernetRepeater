@@ -475,9 +475,6 @@ logic  [4:0] mi_register = R_STATUS;
 logic [15:0] mi_data_in = '0;
 logic [15:0] mi_data_out = '0;
 
-// Set true if we ever saw busy from MI
-logic ever_busy_mi = '0;
-
 //////////////
 
 // Use an ALTIOBUF with open-drain set for MDIO.
@@ -501,7 +498,6 @@ always_comb begin
   LEDG[1] = mi_success;
   LEDG[2] = mi_activate;
   LEDG[3] = mdc;
-  LEDG[4] = ever_busy_mi;
 end
 
 ///////////////
@@ -546,6 +542,7 @@ logic enet1_reset;
 assign ENET1_RST_N = ~enet1_reset;
 
 logic ep1_config_error;
+logic ep1_configured; // Has the PHY been configured? If so, we can enable TX and RX
 logic [5:0] ep1_state;
 logic [15:0] ep1_seen_states;
 logic [15:0] ep1_reg0;
@@ -553,8 +550,9 @@ logic [15:0] ep1_reg20;
 logic [15:0] ep1_soft_reset_checks;
 
 // Output some internals
-assign LEDG[6] = ep1_config_error;
-assign hex_display[23:16] = ep1_soft_reset_checks; // ep1_reg20[7:0]; // Expect E2
+assign LEDG[5] = ep1_config_error;
+assign LEDG[6] = ep1_configured;
+assign hex_display[23:16] = ep1_soft_reset_checks; // ep1_reg20[7:0]; // Expect E2 in reg20
 // assign LEDR[15:0] = ep1_seen_states;
 
 eth_phy_88e1111_controller #(
@@ -583,6 +581,7 @@ eth_phy_88e1111_controller #(
   .mii_data_in (mi_data_in),  // Data being read
 
   // Status outputs
+  .configured(ep1_configured),
   .config_error(ep1_config_error),
 
   // Debugging outputs
@@ -615,7 +614,7 @@ eth_phy_88e1111_controller #(
 
 // Show the stored register ID in Hex 7-6
 assign hex_display[31:24] = mi_register;
-assign hex_display[15:0] = mi_data_out; // Data read in from ETH PHY
+assign hex_display[15:0] = mi_data_in; // Data read in from ETH PHY
 
 // Note: "Each push-button switch provides a HIGH logic level when it is not pressed,
 //        and provides a low logic level when depressed."
@@ -682,10 +681,8 @@ always_ff @(posedge CLOCK_50) begin
   end else if (mi_busy && mi_activate) begin
     // Command just started
     mi_activate <= '0;
-    ever_busy_mi <= '1;
   end else if (mi_busy) begin
     // The MI is busy, so track that it became busy
-    ever_busy_mi <= '1;
   end else if (mi_activate) begin
     // Do nothing
   end else if (!mi_busy && !mi_activate && !KEY[0] && KEY[0] != last_key[0]) begin
@@ -693,7 +690,6 @@ always_ff @(posedge CLOCK_50) begin
     // (remember key down reports logic 0)
     mi_activate <= '1;
     mi_register <= SW[4:0];
-    ever_busy_mi <= '0;
   end
 
 end
@@ -710,18 +706,17 @@ end
 // For 1000, section 4.12.2.1 says setup time is 1ns and hold is 0.8ns.
 //
 // At startup, Register 20.1 is 0 (no delay for TXD outputs)
-// and Register 20.7 is 0 (no added delay for RX_CLK)
+// and Register 20.7 is 0 (no added delay for RX_CLK).
+// Our Controller resets those to 1, to allow us to receive data
+// and send data synchronously with the received and transmitted clocks.
 
 `define ENABLE_ETHERNET_TRANSMITTER
 `ifdef ENABLE_ETHERNET_TRANSMITTER
 
 logic clock_eth_tx, clock_eth_tx_lock;
-logic clock_eth_tx_shifted, clock_eth_tx_shifted2;
-
-
 logic clk_eth_125, clk_eth_25, clk_eth_2p5;
 
-`define SPEED_10
+`define SPEED_100
 `ifdef SPEED_1000
 assign clock_eth_tx = clk_eth_125;
 `define USE_DDR 1'b1
@@ -735,11 +730,6 @@ assign clock_eth_tx = clk_eth_2p5;
 `define USE_DDR 1'b0
 `endif
 
-`ifndef USE_ETH_WITH_CLOCK_SHIFT
-assign clock_eth_tx_shifted = clock_eth_tx;
-assign clock_eth_tx_shifted2 = clock_eth_tx;
-`endif
-
 pll_50_to_all_eth_single_input	pll_50_to_all_eth_single_input_inst (
 	.inclk0 ( CLOCK_50 ),
 	.c0 ( clk_eth_125 ), // 125 MHz
@@ -748,79 +738,6 @@ pll_50_to_all_eth_single_input	pll_50_to_all_eth_single_input_inst (
 	.locked (clock_eth_tx_lock),
 	.areset ( '0 ) // FIXME: Add PLL reset
 );
-
-/*
-// This was getting other Critical Warnings on timing probably due to the use of
-// the CLOCK2/3, which nowhere else was used.
-pll_50_to_all_eth	pll_50_to_all_eth_inst (
-  // Using CLOCK2_50 or CLOCK3_50 with CLOCK_50 gives: Critical Warning (176598): PLL "pll_50_to_all_eth:pll_50_to_all_eth_inst|altpll:altpll_component|pll_50_to_all_eth_altpll:auto_generated|pll1" input clock inclk[1] is not fully compensated because it is fed by a remote clock pin "Pin_AG14"
-	.inclk0 ( CLOCK2_50 ),
-	.inclk1 ( CLOCK3_50 ), 
-	.c0 ( clk_eth_125 ), // 125 MHz
-	.c1 ( clk_eth_25 ), // 25 MHz
-	.c2 ( clk_eth_2p5 ), // 2.5 MHz
-	.locked (clock_eth_tx_lock),
-
-  // Not using these
-	.areset ( '0 ), // FIXME: Add PLL reset
-	.activeclock (), // Using CLOCK_50 or CLOCK2_50?
-	.clkbad0 (),
-	.clkbad1 (),
-);
-*/
-
-`ifdef USE_ETH_WITH_CLOCK_SHIFT
-
-`ifdef SPEED_10
-pll_50_to_2p5_with_shift	pll_50_to_2p5_with_shift_inst (
-	.areset('0),
-	.inclk0(CLOCK_50),
-	.c0(clock_eth_tx),
-	.c1(clock_eth_tx_shifted), // 12ns shift
-	.c2(clock_eth_tx_shifted2), // 90 degree shift
-	.locked(clock_eth_tx_lock)
-);
-
-`elsif SPEED_100
-
-// FIXME: Make this a 10ns shift
-pll_50_to_25_with_shift	pll_50_to_25_with_shift_inst (
-	.areset('0),
-	.inclk0(CLOCK_50),
-	.c0(clock_eth_tx),
-	.c1(clock_eth_tx_shifted), // 12ns shift
-	.c2(clock_eth_tx_shifted2), // 90 degree shift
-	.locked(clock_eth_tx_lock)
-);
-
-`elsif SPEED_1000
-
-
-pll_50_to_125_with_shift	pll_50_to_125_with_shift_inst (
-	.areset('0),
-	.inclk0(CLOCK_50),
-	.c0(clock_eth_tx),
-	.c1(clock_eth_tx_shifted2), // 2ns shift
-	.c2(clock_eth_tx_shifted), // 90 degree shift - should ALSO be 2ns
-	.locked(clock_eth_tx_lock)
-);
-
-`endif // SPEED_*
-`endif // USE_ETH_WITH_CLOCK_SHIFT
-
-// Use a PLL to get a 90⁰ delayed version of the RX clock
-// which in practice works at 2.5 MHz input even though the
-// minimum input to the PLL is 5 MHz
-/*
-logic pll_locked, gtx_clk_90;
-
-pll_5mhz_90	pll_5mhz_90_inst (
-  .areset('0),
-	.inclk0(ENET1_RX_CLK),
-	.c0(gtx_clk_90),
-	.locked(pll_locked)
-);
-*/
 
 logic [3:0] tx_data_h, tx_data_l;
 logic tx_ctl_h, tx_ctl_l;
@@ -851,7 +768,7 @@ rgmii_tx rgmii_tx1 (
 assign ENET1_TX_ER = '0;
 // For 10/100 use a 12ns shifted clock. (10 would be better for 100)
 // For 1000, use 1 2ns shifted clock (90⁰ shift for 125 MHz)
-assign ENET1_GTX_CLK = clock_eth_tx_shifted;
+assign ENET1_GTX_CLK = clock_eth_tx;
 assign LEDG[7] = clock_eth_tx_lock; // pll_locked;
 
 // Set up our DDR output pins for RGMII transmit

@@ -91,26 +91,27 @@ added by HSMC card. Some useful features:
   * Write switches SW15-0 to the stored register (Key 2)
   * Hardware reset (Key 3)
 
+* Management state machine
+  * Set up PHY side tx/rx clock shift handling
+    * Read reg, write reg, read reg, write reg, wait for soft reset
+  * Passes through access to the MII management interface when setup is complete
+    (with one cycle delay)
 
 
 ## Next Steps
 
 * LCD Manager
-  * TEST: Send a letter with a specific screen location
   * Power-up sequence required
-  * Prepare to use it to display packet contents (!!!)
 
 * Management state machine
-  * Set up PHY side tx/rx clock shift handling
-    * Read reg, write reg, read reg, write reg, wait for soft reset
-  * Queries MDIO for state periodically
-  * Exports state flags based on the state read
+  * Query MDIO for state periodically and exports state flags based on the state read
     * Link up & ready
     * Speed
     * Duplex
     * (Unnecessary for RGMII optional in-band state signaling?)
   * Could handle interrupts
   * Handle changing transmit speed as receive speed changes
+    (Use a clock multiplexer)
 
 * Simple RGMII TX interface
   * Handle changing speeds dynamically & reconfiguring delay PLLs
@@ -156,21 +157,32 @@ added by HSMC card. Some useful features:
   * [Here](https://www.realdigital.org/doc/6dae6583570fd816d1d675b93578203d) is one BCD converter
   * [Here](https://johnloomis.org/ece314/notes/devices/binary_to_BCD/bin_to_bcd.html) is a better description
 
+
 ## User Interface
 
 * Red LEDs 15-0: Data read from registers
+* Red LEDs 17-16: LCD:
+  * 17 = lcd_busy
+  * 16 = lcd_available
+* Green LEDs 3-0: Management Controller/Interface Status
+  * 0 = Busy
+  * 1 = Success
+  * 2 = Activate
+  * 3 = MDC (Management Clock)
+* Green LED 5: Eth PHY configuration error (bad)
+* Green LED 6: Eth PHY configuration complete
+* Green LED 7: PLL Lock status for 125, 25, 2.5 MHz from 50
 * Green LED 8: Heartbeat
-* Green LEDs 5-0: Status (see code)
-* Green LED 7: PLL Lock status
-* KEY 3: Reset Ethernet PHY (only)
 * SW 4-0: Register address for below (Register decimal 17 is interesting.)
-* Sw 15-0: Register data for below
 * KEY 0: Set register address for KEY 1/2
 * KEY 1: Read from stored register to Red LEDs & HEX
-* KEY 2: Write SW15-0 to stored register (re-read it to be sure)
-* HEX 7-6: Stored MDIO Management Interface register
+* KEY 2: Transmit fixed Ethernet packet
+* KEY 3: Reset Ethernet PHY (only)
+* HEX 7-6: Stored MDIO Management Interface register (from key 0)
+* HEX 5-4: Soft reset of ETH PHY count
 * HEX 3-0: Last read MDIO Management Interface register value
 * LCD: Unused
+
 
 ## Open Questions
 
