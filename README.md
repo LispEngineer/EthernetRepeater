@@ -192,6 +192,7 @@ added by HSMC card. Some useful features:
   * Suggested setting the Synthesis Optimization to "Speed" - this did not help
   * Suggested turning on Physical Synthesis - which I did in the Fitter Advanced Settings - this also did not help
   * I don't really understand how the paths from `count` to `crc` are misbehaving
+  * We could try Alex's [CRC Generator Here](https://github.com/alexforencich/verilog-lfsr/blob/master/rtl/lfsr.v) which he says synthesizes well in Quartus
 
 * Sometimes I have to send the MDIO request a few times to get it to respond
   differently. I haven't looked much into it. It could be a switch/button problem
@@ -244,7 +245,8 @@ I made two RAMs:
 Used the generated code from [this site](https://bues.ch/cms/hacking/crcgen)
 and made it into SystemVerilog. Source is [on Github](https://github.com/mbuesch/crcgen).
 
-
+* [Another one](https://leventozturk.com/engineering/crc/)
+* [A nice another one](http://crctool.easics.be/)
 
 
 # Notes on Ubuntu & Wireshark

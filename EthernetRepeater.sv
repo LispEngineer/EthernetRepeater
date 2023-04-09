@@ -721,7 +721,7 @@ logic clock_eth_tx_shifted, clock_eth_tx_shifted2;
 
 logic clk_eth_125, clk_eth_25, clk_eth_2p5;
 
-`define SPEED_1000
+`define SPEED_10
 `ifdef SPEED_1000
 assign clock_eth_tx = clk_eth_125;
 `define USE_DDR 1'b1
