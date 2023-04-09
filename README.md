@@ -164,15 +164,13 @@ added by HSMC card. Some useful features:
 * Green LED 7: PLL Lock status
 * KEY 3: Reset Ethernet PHY (only)
 * SW 4-0: Register address for below (Register decimal 17 is interesting.)
-* KEY 0: Read from register in SW 4-0
-* KEY 1: Send fixed ARP packet
-* HEX 7-6: Packet count
-* HEX 5-4: Last byte read from RAM
-* HEX 3-2: RAM buffer # last read from FIFO
-* HEX 1: 1 if the FIFO is not empty, 0 if empty
-* HEX 0: Ethernet Receiver State Machine State #
-* LCD: 32 bytes from the Ethernet Receiver most recent packet
-
+* Sw 15-0: Register data for below
+* KEY 0: Set register address for KEY 1/2
+* KEY 1: Read from stored register to Red LEDs & HEX
+* KEY 2: Write SW15-0 to stored register (re-read it to be sure)
+* HEX 7-6: Stored MDIO Management Interface register
+* HEX 3-0: Last read MDIO Management Interface register value
+* LCD: Unused
 
 ## Open Questions
 
@@ -512,6 +510,10 @@ Revision M of Marvell spec:
 * 2.2.1 is GMII/MII
 * 2.2.3 is RGMII
 
+Section 1.5 shows the Reset Modes (specifically Hardware & Software reset)
+* Reg 16.3 defaults to active for RX_CLK
+* Hardware reset stops MDIO but software reset keeps it active (!)
+
 #### 2.8 Power management
 COMA pin is tied low per schematic
 
@@ -657,6 +659,47 @@ The `HWCFG_MODE` could be changed
   * Extended register capability - yes
 
 
+## 88E1111 Controller
+
+Notes on resets:
+
+* 2.10 says: "The 88E1111 device will be available for read/write operations 5 ms after hardware reset."
+  * Unclear if that means for TWSI only or all operations.
+* Table 59, bit 15, says when the software reset is complete, the bit will be cleared
+  * So we can monitor for reset complete by polling this
+* 4.8.1 shows Reset Timings
+  * Do a reset for 10ms after valid power
+  * Do at least 10 cycles of the (Ethernet) clock before deasserting reset
+  * Assert reset for at least 10ms during normal operation
+  * 5ms after reset ends you can use MDIO
+
+Controller operation:
+
+* Reset
+  * Implement this as hard reset of PHY
+* Initial startup:
+  * Start & hold reset 10ms (call it 15 for good measure)
+  * Deassert PHY reset
+  * Wait 5ms to get to MDIO capability (call it 7.5ms for good measure)
+* Configuration:
+  * Set PHY-side TX_CLK/RX_CLK delays (so we can just read/write "synchronously" on the FPGA)
+    * Read Register 20 (0x14)
+    * Set bits 7 & 1 and write it
+    * Confirm those bits are set
+    * Read Register 0
+    * Set bit 15 & write it
+    * Wait n MS for soft reset
+    * Read Register 0 every so often until bit 0 is off
+  * Indicate "Ethernet Ready"
+* Normal operation:
+  * Offer MDIO Mangement Interface so it can handle read/write requests
+  * Occasionally read the status and export them as output signals
+    * Link connected
+    * Speed
+    * Duplex
+    * (Note: The ETH RX will get this using in-band signaling)
+* FUTURE: Handle interrupts
+  
 
 # Misc Quartus Notes
 

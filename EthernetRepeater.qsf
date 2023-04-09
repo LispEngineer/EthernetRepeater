@@ -1297,6 +1297,7 @@ set_global_assignment -name EDA_TEST_BENCH_FILE rgmii_rx_impl.sv -section_id rgm
 set_global_assignment -name EDA_TEST_BENCH_FILE rx_fifo.v -section_id rgmii_rx
 set_global_assignment -name EDA_TEST_BENCH_FILE rx_ram_buffer.v -section_id rgmii_rx
 set_global_assignment -name EDA_TEST_BENCH_FILE rx_ram_buffer_fast.v -section_id rgmii_rx
+set_global_assignment -name SYSTEMVERILOG_FILE eth_phy_88e1111_controller.sv
 set_global_assignment -name SYSTEMVERILOG_FILE seven_segment.sv
 set_global_assignment -name SYSTEMVERILOG_FILE test_rgmii_rx.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rgmii_rx_impl.sv
