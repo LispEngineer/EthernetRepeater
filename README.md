@@ -187,9 +187,16 @@ added by HSMC card. Some useful features:
 
 ## Known Bugs
 
+* Timing analyzer does not like the CRC generator running at 125MHz; compiling gives a Critical Warning
+  * Open Timing Analyzer -> Tasks -> Reports -> Custom Reports -> Report Timing Closure Recommendations and use 20,000 paths
+  * Suggested setting the Synthesis Optimization to "Speed" - this did not help
+  * Suggested turning on Physical Synthesis - which I did in the Fitter Advanced Settings - this also did not help
+  * I don't really understand how the paths from `count` to `crc` are misbehaving
+
 * Sometimes I have to send the MDIO request a few times to get it to respond
   differently. I haven't looked much into it. It could be a switch/button problem
   or an actual internal bug or a PHY limitation?
+  * This hasn't happened in a while so maybe it's not a problem anymore.
 
 ### Recently Fixed Bugs
 

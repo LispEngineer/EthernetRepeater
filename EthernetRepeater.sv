@@ -740,6 +740,18 @@ assign clock_eth_tx_shifted = clock_eth_tx;
 assign clock_eth_tx_shifted2 = clock_eth_tx;
 `endif
 
+pll_50_to_all_eth_single_input	pll_50_to_all_eth_single_input_inst (
+	.inclk0 ( CLOCK_50 ),
+	.c0 ( clk_eth_125 ), // 125 MHz
+	.c1 ( clk_eth_25 ), // 25 MHz
+	.c2 ( clk_eth_2p5 ), // 2.5 MHz
+	.locked (clock_eth_tx_lock),
+	.areset ( '0 ) // FIXME: Add PLL reset
+);
+
+/*
+// This was getting other Critical Warnings on timing probably due to the use of
+// the CLOCK2/3, which nowhere else was used.
 pll_50_to_all_eth	pll_50_to_all_eth_inst (
   // Using CLOCK2_50 or CLOCK3_50 with CLOCK_50 gives: Critical Warning (176598): PLL "pll_50_to_all_eth:pll_50_to_all_eth_inst|altpll:altpll_component|pll_50_to_all_eth_altpll:auto_generated|pll1" input clock inclk[1] is not fully compensated because it is fed by a remote clock pin "Pin_AG14"
 	.inclk0 ( CLOCK2_50 ),
@@ -755,6 +767,7 @@ pll_50_to_all_eth	pll_50_to_all_eth_inst (
 	.clkbad0 (),
 	.clkbad1 (),
 );
+*/
 
 `ifdef USE_ETH_WITH_CLOCK_SHIFT
 
