@@ -900,7 +900,8 @@ assign LEDG[5:0] = {in_band_differ, speed_1000, speed_100, speed_10, full_duplex
 // 31-24 is the register, so display counts on the other 3 pairs
 assign hex_display[23:16] = count_reception[7:0];
 assign hex_display [15:8] = count_interframe[7:0]; // count_reception[7:0];
-assign hex_display  [7:0] = count_interframe_differ[7:0];
+// assign hex_display  [7:0] = count_interframe_differ[7:0];
+assign hex_display  [7:0] = {in_band_h, in_band_l};
 
 // DDR inputs
 logic rx_ctl_l, rx_ctl_h;

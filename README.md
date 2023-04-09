@@ -220,9 +220,9 @@ added by HSMC card. Some useful features:
     * The count of received packets is exactly the same as the count of interframe_differ
       packets. I wonder if this means the receiver starts getting stuff in the middle of
       an interframe in-band signaling packet and directly outputs that to the MAC?
+    * The data_h and data_l seem to be a consistent 0xFB or 8'b1111_1011 based on the
+      output of this commit.
 
-    * No interframe in-band differ counts! But LEDG[5] in_band_differ is definitely visually
-      flashing, so... Dunno what to make of that.
 
 ## Known Bugs
 
