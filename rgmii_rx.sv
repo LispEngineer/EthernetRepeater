@@ -81,6 +81,15 @@ module rgmii_rx #(
   // How many times the H & L nibbles differed in normal interframe
   output logic [31:0] count_interframe_differ,
 
+  // How many frames we got which ended normally
+  output logic [31:0] count_rcv_end_normal,
+  // How many frames we got which ended with a carrier extend
+  output logic [31:0] count_rcv_end_carrier,
+  // How many frames we received with at least one error in them
+  output logic [31:0] count_rcv_errors,
+  // How many packets we received we had to drop due to full recieve FIFO
+  output logic [31:0] count_rcv_dropped_packets,
+
   ////////////////////////////////////////////////////
   // RAM & FIFO Outputs
 
@@ -174,6 +183,11 @@ rgmii_rx_impl #(
   .count_receive_err(count_receive_err),
   .count_carrier(count_carrier),
   .count_interframe_differ(count_interframe_differ),
+
+  .count_rcv_end_normal(count_rcv_end_normal),
+  .count_rcv_end_carrier(count_rcv_end_carrier),
+  .count_rcv_errors(count_rcv_errors),
+  .count_rcv_dropped_packets(count_rcv_dropped_packets),
 
   // PHY interface
   .rx_ctl_h(rx_ctl_h),

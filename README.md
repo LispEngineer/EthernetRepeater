@@ -152,6 +152,11 @@ added by HSMC card. Some useful features:
         the final length and error information
   * Build a streaming output (AXI-Stream?) when we are getting a packet
     * Have an end of packet flag, which shows CRC and framing errors
+  * Handle missing preamble nibbles: [Wikipedia](https://en.wikipedia.org/wiki/Media-independent_interface) says:
+    "The receive data valid signal (RX_DV) is not required to go high immediately 
+    when the frame starts, but must do so in time to ensure the "start of frame 
+    delimiter" byte is included in the received data. Some of the preamble nibbles 
+    may be lost."
 
 * Improved CRC generator for Cyclone IV
   * Build a 3 & 4 entry XOR LUT mechanism to target the Cyclone IV's 4-LUT
@@ -229,6 +234,13 @@ added by HSMC card. Some useful features:
       or 0x49 or 8'b0010_1001. It seems the old (or new?) speed is shown during this misatch.
     * I guess we just ignore the mismatches.
     * WHAT ABOUT receive errors?
+
+* The packets we start to receive get ended with 0,1 - carrier something - according to
+  our counters. They don't have errors (receive error counter is 0) and don't have
+  normal ends.
+
+* If we get RX_ERR (RX_ER, RXERR), what do we do with the data in that byte/nibble?
+  * For now, I am just ignoring it
 
 
 ## Known Bugs
@@ -326,6 +338,36 @@ and made it into SystemVerilog. Source is [on Github](https://github.com/mbuesch
 
 * `sysfs`
   * `ls /sys/class/net/enp175s0/statistics/` shows all available statistics
+
+* `nmcli` (Really no idea about this one)
+  * `nmcli connection show` 
+
+* `ping`
+  * Send exactly one ping on a specified interface to broadcast address
+    * `ping -c 1 -I enp175s0 -r -b 192.168.3.255`
+
+* `packeth`
+  * GUI (and CLI?) program to send random Ethernet packets, very useful
+
+* Ubuntu network settings
+  * For the wired ethernet, make it quiet like this:
+  * Details: Do not connect automatically
+  * Identity: Whatever
+  * IPv4: Manual at 192.168.0.133/255.255.252.0, no gateway, no DNS
+  * IPv6: Disable (just easier for now)
+  * Security: None (802.1x disable)
+  * (Adding a gateway leads to tons of ARPs for 192.168.1.1)
+  * Upon enabling the connection we get a bunch of packets:
+    * IGMPv3 join for 224.0.0.251
+    * ARP announcement for 192.168.0.133
+    * A bunch of MDNS
+
+* Disable MDNS on wired ethernet (Avahi)
+  * `/etc/avahi/avahi-daemon.conf` and add the interface to `deny-interfaces`
+
+* With the network configuration above, and removing MDNS (Avahi), you now get a very
+  quiet interface: Just a few ARP announcements. Then you can just use `arping` to generate
+  random packets.
 
 * Little monitor I cooked up:
 
@@ -477,6 +519,7 @@ Docs:
 * https://medium.com/@Frank_pan/how-to-use-ethernet-components-in-fpga-altera-de2-115-26659da06362
 * https://en.wikipedia.org/wiki/Media-independent_interface#cite_note-802.3-2
 * [U-boot Initialization](https://github.com/RobertCNelson/u-boot/blob/master/drivers/net/phy/marvell.c)
+* [Ethernet Carrier Extension](https://www.cse.wustl.edu/~jain/cis788-97/ftp/gigabit_ethernet/index.html#CAR)
 
 * MDIO
   * [Wikipedia on MDIO](https://en.wikipedia.org/wiki/Management_Data_Input/Output)

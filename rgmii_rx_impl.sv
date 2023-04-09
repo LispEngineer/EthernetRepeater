@@ -104,7 +104,16 @@ module rgmii_rx_impl #(
   // How many times we got the Carrier Extend/Error/Sense interframe
   output logic [31:0] count_carrier,
   // How many times the H & L nibbles differed in normal interframe
-  output logic [31:0] count_interframe_differ
+  output logic [31:0] count_interframe_differ,
+
+  // How many frames we got which ended normally
+  output logic [31:0] count_rcv_end_normal,
+  // How many frames we got which ended with a carrier extend
+  output logic [31:0] count_rcv_end_carrier,
+  // How many frames we received with at least one error in them
+  output logic [31:0] count_rcv_errors,
+  // How many packets we received we had to drop due to full recieve FIFO
+  output logic [31:0] count_rcv_dropped_packets
 
 );
 
@@ -312,7 +321,9 @@ end // Bogus State Machine
 ////////////////////////////////////////////////////////////////////////////////////////
 // Real RGMII Receiver
 
-localparam S_IDLE = 0;
+localparam S_IDLE = 4'd0,
+           S_RECEIVING = 4'd1,
+           S_FRAME_END = 4'd2;
 
 logic [3:0] state = S_IDLE;
 
@@ -325,6 +336,26 @@ logic rx_dv; // High side of rx_ctl
 logic rx_err; // Low side of rx_ctl as rx_dv & rx_err
 logic last_rx_dv = '0, last_rx_err = '0;
 
+// As we are receiving, we track our buffer and byte position
+logic [BUFFER_NUM_ENTRY_BITS-1:0] cur_buf;
+logic [BUFFER_ENTRY_SZ-1:0] byte_pos; // Position within a packet
+// Our current index into our RAM
+// Comprised of which buffer we are doing and
+// which byte we're doing within that buffer.
+logic [BUFFER_SZ-1:0] ram_pos;
+assign ram_pos = {cur_buf, byte_pos};
+
+// Current byte being received (especially if nibble-based receiving)
+logic [7:0] cur_byte;
+logic nibble; // and current nibble being received (0 = low, 1 = high)
+// Any errors during the receive of the current packet?
+logic packet_rcv_err;
+
+// If we have to repeat things a few times
+logic [3:0] local_count;
+localparam TRIES_FIFO_INSERT = 3'd3;
+
+
 // Counters how many times we enter these various RX_CTL states
 initial count_interframe = '0;
 initial count_reception = '0;
@@ -335,6 +366,9 @@ initial count_interframe_differ = '0;
 // The last inter-frame data we got
 logic [3:0] last_interframe;
 logic ddr_data;
+
+// Were we receiving?
+logic in_receive = '0;
 
 always_comb begin
   rx_dv = rx_ctl_h;
@@ -353,6 +387,9 @@ always_ff @(posedge clk_rx) begin
 
   if (reset) begin
 
+    // FIXME: CODE ME: Reset all counters, etc.
+    state <= S_IDLE;
+
   end else begin
 
     case (state)
@@ -361,6 +398,9 @@ always_ff @(posedge clk_rx) begin
 
       last_rx_dv <= rx_dv;
       last_rx_err <= rx_err;
+      byte_pos <= '0;
+      in_receive <= '0;
+      fifo_wr_req <= '0;
 
       // See Table 4 in section 3.4 of RGMII Spec 2.0
       // See Marvell 88E1111 Rev M section 2.2.3.2 which implies support for in-band
@@ -390,9 +430,31 @@ always_ff @(posedge clk_rx) begin
       end // 2'b00
 
       2'b10: begin // 10 = DV and !ERR (comes on wire as 11)
-        // TODO: Normal data receiption
+        // Normal data receiption: Begin packet receiption
         if (last_rx_dv != rx_dv || last_rx_err != rx_err)
           count_reception <= count_reception + 1'd1;
+
+        in_receive <= '1;
+        packet_rcv_err <= '0;
+        byte_pos <= 0;
+        if (ddr_data) begin
+          // DDR, so we get a byte at a time:
+          // 3:0 on high, 7:4 on low (RGMII 2.0 Spec, Table 1)
+          ram_wr_ena <= '1; // Write our byte
+          ram_wr_data <= {rx_data_l, rx_data_h};
+
+        end else begin
+          // We always receive the low nibble first
+          cur_byte[3:0] <= rx_data_h;
+          // RGMII 2.0 spec 5.0 says data _may_ be duplicated on low edge of clock
+          nibble <= '1;
+          // We will write when we have a full byte
+        end
+
+        // For now, we receive all bytes raw, don't check preamble,
+        // FCS, anything.
+        state <= S_RECEIVING;
+        
       end // 2'b00
 
       2'b01: begin
@@ -417,6 +479,104 @@ always_ff @(posedge clk_rx) begin
       endcase // rx_dv and rx_err
         
     end // S_IDLE
+
+
+    // FOR NOW, we are receiving the whole packet verbatim, not checking for
+    // Preamble, SFD, or checking CRC/FCS.
+    S_RECEIVING: begin ///////////////////////////////////////////////////////
+      // We already got our first byte/nibble - now get more
+      // TODO: Stop receiving after packet length > whatever the max is, 2000?
+
+      case ({rx_dv, rx_err})
+      2'b01, // Carrier extend
+      2'b00: begin // Normal inter-frame
+        // Frame is over (no matter what, DV is low)
+        state <= S_FRAME_END;
+        ram_wr_ena <= '0;
+        // TODO: Check, if !ddr & nibble is 1, then we have half a byte received, unprocessed
+        if (!rx_err)
+          count_rcv_end_normal <= count_rcv_end_normal + 1'd1;
+        else
+          count_rcv_end_carrier <= count_rcv_end_carrier + 1'd1;
+        local_count <= TRIES_FIFO_INSERT;
+      end // 2'b0x
+
+      2'b10: begin // Normal receive
+
+        if (ddr_data) begin
+          // Write our next byte to RAM (recived a byte at a time)
+          byte_pos <= byte_pos + 1'd1;
+          ram_wr_ena <= '1;
+          ram_wr_data <= {rx_data_l, rx_data_h};
+
+        end else begin
+          // Non-DDR data, nibble at a time
+          nibble <= ~nibble;
+          if (nibble == '1) begin
+            // Getting the 2nd half of a nibble, so write the byte to current position
+            ram_wr_ena <= '1;
+            ram_wr_data <= {rx_data_h, cur_byte[3:0]};
+          end else begin
+            // First half of the nibble, save it and increment counter
+            byte_pos <= byte_pos + 1'd1;
+            ram_wr_ena <= '0;
+            cur_byte[3:0] <= rx_data_h;
+          end
+        end // DDR or not
+
+      end // 2'b10
+
+      2'b11: begin // Receive error
+        // I THINK that we ignore this byte/nibble and continue
+        // receiving the rest of the packet.
+        packet_rcv_err <= '1;
+        ram_wr_ena <= '0;
+        count_rcv_errors <= count_rcv_errors + 1'd1;
+      end // 2'b11
+
+      endcase // S_RECEIVING RX_DV/ERR case
+
+    end // S_RECEIVING
+
+    S_FRAME_END: begin ///////////////////////////////////////////////////////
+      // Frame has ended. Finish writing our data and send the signal over
+      // FIFO, then return to idle.
+      // We have a few inter-packet cycles we can use up: https://en.wikipedia.org/wiki/Interpacket_gap
+      // 10: 11 cycles (47 bit times @ 4 bits per cycle)
+      // 100: 24 cycles (96 bit times @ 4 bits per cycle)
+      // 1000: 8 cycles (64 bit times @ 8 bits per cycle)
+      // We used one cycle to get here already, so we have only 7 left.
+
+      // TODO: Finish CRC calculation and confirm it matches expected fixed value
+      // Send a FIFO message about having just received something
+      // Increment our buffer number before going back to idle
+      ram_wr_ena <= '0;
+
+      // We insert into our FIFO if it's not full,
+      // or wait another cycle, until we've waited long
+      // enough and have to give up.
+      if (!fifo_wr_full) begin
+        fifo_wr_req <= '1;
+        fifo_wr_data <= {
+          1'b0, // CRC error
+          packet_rcv_err, // Frame error
+          cur_buf,
+          byte_pos
+        };
+      end else if (local_count == '0) begin
+        // We give up
+        count_rcv_dropped_packets <= count_rcv_dropped_packets + 1'd1;
+      end else begin
+        local_count <= local_count - 1'd1;
+      end
+
+      // We're done, let's get IDLEing
+      if (!fifo_wr_full || local_count == '0) begin
+        state <= S_IDLE;
+        in_receive <= '0;
+        cur_buf <= cur_buf + 1'd1;
+      end
+    end // S_FRAME_END
 
     endcase // current state case
 
