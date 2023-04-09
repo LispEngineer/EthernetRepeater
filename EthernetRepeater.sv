@@ -178,7 +178,8 @@ module EthernetRepeater(
   output logic        FL_WP_N,
 
   //////////// GPIO, GPIO connect to GPIO Default //////////
-  inout  wire  [35:0] GPIO,
+  // inout  wire  [35:0] GPIO,
+  input  logic [35:0] GPIO,
 
   //////////// HSMC, HSMC connect to DVI - FullHD TX/RX //////////
   // output logic        DVI_EDID_WP,
@@ -257,7 +258,7 @@ module EthernetRepeater(
 
 // Zero out unused outputs
 always_comb begin
-  LEDG[5] = '0;
+  // LEDG[5] = '0;
   // LEDR[16] = '0;
   /*
   HEX0 = '1; // These LED segments are OFF when logic 1
@@ -383,7 +384,7 @@ always_comb begin
   DRAM_DQ = 'z;
   SRAM_DQ = 'z;
   FL_DQ = 'z;
-  GPIO = 'z;
+  // GPIO = 'z;
   // DVI_RX_DDCSCL = 'z;
   // DVI_RX_DDCSDA = 'z;
   // DVI_TX_DDCSCL = 'z;
@@ -394,6 +395,25 @@ always_comb begin
 
 `endif
 end
+
+////////////////////////////////////////////////////////////////////////////////
+// Adafruit 1332 4-button keypad
+// These are dumb, non-debounced buttons
+// Plug these into the left side of GPIO, starting at 6th pin from bottom for power,
+// and then going up it uses GPIO24, 22, 20, 18 for buttons 2, 1, 4, 3
+//
+// https://learn.adafruit.com/matrix-keypad/pinouts
+// Did not get this working
+
+/*
+logic [3:0] BTN_RAW;
+assign BTN_RAW[0] = GPIO[22];
+assign BTN_RAW[1] = GPIO[24];
+assign BTN_RAW[2] = GPIO[18];
+assign BTN_RAW[3] = GPIO[20];
+
+assign LEDG[5] = BTN_RAW[0];
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 // 7 Segment logic
@@ -530,10 +550,11 @@ logic [5:0] ep1_state;
 logic [15:0] ep1_seen_states;
 logic [15:0] ep1_reg0;
 logic [15:0] ep1_reg20;
+logic [15:0] ep1_soft_reset_checks;
 
 // Output some internals
 assign LEDG[6] = ep1_config_error;
-assign hex_display[23:16] = ep1_reg20[7:0]; // Expect E2
+assign hex_display[23:16] = ep1_soft_reset_checks; // ep1_reg20[7:0]; // Expect E2
 // assign LEDR[15:0] = ep1_seen_states;
 
 eth_phy_88e1111_controller #(
@@ -568,7 +589,8 @@ eth_phy_88e1111_controller #(
   .d_state(ep1_state),
   .d_reg0(ep1_reg0),
   .d_reg20(ep1_reg20),
-  .d_seen_states(ep1_seen_states)
+  .d_seen_states(ep1_seen_states),
+  .d_soft_reset_checks(ep1_soft_reset_checks)
 );
 
 `endif

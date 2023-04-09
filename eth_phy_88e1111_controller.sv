@@ -63,13 +63,15 @@ module eth_phy_88e1111_controller #(
   output logic [5:0] d_state,
   output logic [15:0] d_reg0,
   output logic [15:0] d_reg20,
-  output logic [15:0] d_seen_states
+  output logic [15:0] d_seen_states,
+  output logic [15:0] d_soft_reset_checks
 );
 
 initial phy_reset = '1;
 initial config_error <= '0;
 initial connected <= '0;
 initial d_seen_states <= '0;
+initial d_soft_reset_checks <= '0;
 
 logic reset_into_mii = '0;
 logic c_mii_busy;
@@ -321,6 +323,7 @@ always_ff @(posedge clk) begin
       reg_to_rw <= R_CONTROL;
       state <= S_REGISTER_READ_START;
       state_after_rw <= S_SOFT_RESET_WRITE_0;
+      d_soft_reset_checks <= '0;
     end // S_SOFT_RESET_BEGIN
 
     S_SOFT_RESET_WRITE_0: begin ///////////////////////////////////////////
@@ -353,6 +356,7 @@ always_ff @(posedge clk) begin
         // Need to try again
         delay_counter <= DELAY_AFTER_SOFT_RESET;
         state <= S_SOFT_RESET_WAIT;
+        d_soft_reset_checks <= d_soft_reset_checks + 1'd1;
       end
     end // S_SOFT_RESET_VERIFY
 
