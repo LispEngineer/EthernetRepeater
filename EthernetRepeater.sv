@@ -554,7 +554,7 @@ logic [15:0] ep1_soft_reset_checks;
 // Output some internals
 // assign LEDG[5] = ep1_config_error;
 assign LEDG[6] = ep1_configured;
-assign hex_display[23:16] = ep1_soft_reset_checks; // ep1_reg20[7:0]; // Expect E2 in reg20
+// assign hex_display[23:16] = ep1_soft_reset_checks; // ep1_reg20[7:0]; // Expect E2 in reg20
 // assign LEDR[15:0] = ep1_seen_states;
 
 eth_phy_88e1111_controller #(
@@ -616,7 +616,7 @@ eth_phy_88e1111_controller #(
 
 // Show the stored register ID in Hex 7-6
 assign hex_display[31:24] = mi_register;
-assign hex_display[15:0] = mi_data_in; // Data read in from ETH PHY
+// assign hex_display[15:0] = mi_data_in; // Data read in from ETH PHY
 
 // Note: "Each push-button switch provides a HIGH logic level when it is not pressed,
 //        and provides a low logic level when depressed."
@@ -888,8 +888,19 @@ logic [7:0] byte_to_display;
 logic link_up, full_duplex, speed_10, speed_100, speed_1000;
 // PHY Debugging
 logic in_band_differ;
+logic [3:0] in_band_h;
+logic [3:0] in_band_l;
+logic [31:0] count_interframe;
+logic [31:0] count_reception;
+logic [31:0] count_receive_err;
+logic [31:0] count_carrier;
+logic [31:0] count_interframe_differ;
 
 assign LEDG[5:0] = {in_band_differ, speed_1000, speed_100, speed_10, full_duplex, link_up};
+// 31-24 is the register, so display counts on the other 3 pairs
+assign hex_display[23:16] = count_reception[7:0];
+assign hex_display [15:8] = count_interframe[7:0]; // count_reception[7:0];
+assign hex_display  [7:0] = count_interframe_differ[7:0];
 
 // DDR inputs
 logic rx_ctl_l, rx_ctl_h;
@@ -927,7 +938,17 @@ rgmii_rx ethernet_rx (
   .speed_1000(speed_1000),
   .speed_100(speed_100),
   .speed_10(speed_10),
+
   .in_band_differ(in_band_differ),
+  .in_band_h(in_band_h),
+  .in_band_l(in_band_l),
+
+  // Debugging counters
+  .count_interframe(count_interframe),
+  .count_reception(count_reception),
+  .count_receive_err(count_receive_err),
+  .count_carrier(count_carrier),
+  .count_interframe_differ(count_interframe_differ),
 
   // RAM read interface
   .clk_ram_rd(CLOCK_50),

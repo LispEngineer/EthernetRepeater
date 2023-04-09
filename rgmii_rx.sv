@@ -65,6 +65,21 @@ module rgmii_rx #(
   ////////////////////////////////////////////////////
   // Debugging outputs
   output logic in_band_differ,
+  // When they differ, we share the differences
+  output logic [3:0] in_band_h,
+  output logic [3:0] in_band_l,
+
+  // Debugging counters
+  // How many times we began normal interframe
+  output logic [31:0] count_interframe,
+  // How many times we began reception
+  output logic [31:0] count_reception,
+  // How many times we began receive error
+  output logic [31:0] count_receive_err,
+  // How many times we got the Carrier Extend/Error/Sense interframe
+  output logic [31:0] count_carrier,
+  // How many times the H & L nibbles differed in normal interframe
+  output logic [31:0] count_interframe_differ,
 
   ////////////////////////////////////////////////////
   // RAM & FIFO Outputs
@@ -149,7 +164,16 @@ rgmii_rx_impl #(
   .speed_1000(speed_1000),
   .speed_100(speed_100),
   .speed_10(speed_10),
+
   .in_band_differ(in_band_differ),
+  .in_band_h(in_band_h),
+  .in_band_l(in_band_l),
+
+  .count_interframe(count_interframe),
+  .count_reception(count_reception),
+  .count_receive_err(count_receive_err),
+  .count_carrier(count_carrier),
+  .count_interframe_differ(count_interframe_differ),
 
   // PHY interface
   .rx_ctl_h(rx_ctl_h),

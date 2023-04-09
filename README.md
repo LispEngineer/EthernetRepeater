@@ -191,8 +191,10 @@ added by HSMC card. Some useful features:
 * KEY 2: Transmit fixed Ethernet packet
 * KEY 3: Reset Ethernet PHY (only)
 * HEX 7-6: Stored MDIO Management Interface register (from key 0)
-* HEX 5-4: Soft reset of ETH PHY count
-* HEX 3-0: Last read MDIO Management Interface register value
+* HEX 5-0: Receiver counts
+  * 5-4: # of times we got receive error
+  * 3-2: # of times we got a proper receive
+  * 1-0: # of times interframe differed
 * LCD: Unused
 
 
@@ -214,6 +216,13 @@ added by HSMC card. Some useful features:
   * Also 10/Full, 100/Half and 100/Full
   * Harder to say, but also seems to happen at 1000/Full (blink is so faint)
   * TODO: Show the H & L sides when there is a packet mismatch?
+  * Test results (with this commit):
+    * The count of received packets is exactly the same as the count of interframe_differ
+      packets. I wonder if this means the receiver starts getting stuff in the middle of
+      an interframe in-band signaling packet and directly outputs that to the MAC?
+
+    * No interframe in-band differ counts! But LEDG[5] in_band_differ is definitely visually
+      flashing, so... Dunno what to make of that.
 
 ## Known Bugs
 

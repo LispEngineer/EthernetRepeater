@@ -90,7 +90,22 @@ module rgmii_rx_impl #(
   ////////////////////////////////////////////////////
   // Debugging outputs
 
-  output logic in_band_differ // Are the _h and _l different during 00 in-band?
+  output logic in_band_differ, // Are the _h and _l different during 00 in-band?
+  output logic [3:0] in_band_h,
+  output logic [3:0] in_band_l,
+
+  // Debugging counters
+  // How many times we began normal interframe
+  output logic [31:0] count_interframe,
+  // How many times we began reception
+  output logic [31:0] count_reception,
+  // How many times we began receive error
+  output logic [31:0] count_receive_err,
+  // How many times we got the Carrier Extend/Error/Sense interframe
+  output logic [31:0] count_carrier,
+  // How many times the H & L nibbles differed in normal interframe
+  output logic [31:0] count_interframe_differ
+
 );
 
 // How many packets did we drop because we
@@ -308,6 +323,14 @@ logic [7:0] rx_byte;  // Byte currently being received
 // (See RGMII Spec 3.0 and 3.4)
 logic rx_dv; // High side of rx_ctl
 logic rx_err; // Low side of rx_ctl as rx_dv & rx_err
+logic last_rx_dv = '0, last_rx_err = '0;
+
+// Counters how many times we enter these various RX_CTL states
+initial count_interframe = '0;
+initial count_reception = '0;
+initial count_receive_err = '0;
+initial count_carrier = '0;
+initial count_interframe_differ = '0;
 
 // The last inter-frame data we got
 logic [3:0] last_interframe;
@@ -336,10 +359,14 @@ always_ff @(posedge clk_rx) begin
 
     S_IDLE: begin /////////////////////////////////////////////////////////
 
+      last_rx_dv <= rx_dv;
+      last_rx_err <= rx_err;
+
       // See Table 4 in section 3.4 of RGMII Spec 2.0
       // See Marvell 88E1111 Rev M section 2.2.3.2 which implies support for in-band
       // Do what needs to be done for error and rx_err (TODO: we could just
-      // simplify this to rx_ctl_h and rx_ctl_l?)
+      // simplify this to rx_ctl_h and rx_ctl_l?).
+      // Note that Table 4 shows RX_CTL H,L and not the decoded DV, ER (in other columns)
       case ({rx_dv, rx_err})
       2'b00: begin
         // Full idle - normal inter-frame situation
@@ -347,17 +374,27 @@ always_ff @(posedge clk_rx) begin
         // Bit 2-1: speed: 00 = 2.5, 01 = 25, 10 = 125 MHz, 11 = Reserved
         // Bit 3: Duplex: 1 = full
         // Nibbles are the same on high and low edge of rx_clk
+        if (last_rx_dv != rx_dv || last_rx_err != rx_err)
+          count_interframe <= count_interframe + 1'd1;
+
         if (rx_data_h != rx_data_l) begin
           in_band_differ <= '1;
+          count_interframe_differ <= count_interframe_differ + 1'd1;
+          in_band_h <= rx_data_h;
+          in_band_l <= rx_data_l;
           // Don't save the data, it may be unreliable
         end else begin
           last_interframe <= rx_data_h;
           in_band_differ <= '0;
         end
       end // 2'b00
-      2'b11: begin
+
+      2'b10: begin // 10 = DV and !ERR (comes on wire as 11)
         // TODO: Normal data receiption
+        if (last_rx_dv != rx_dv || last_rx_err != rx_err)
+          count_reception <= count_reception + 1'd1;
       end // 2'b00
+
       2'b01: begin
         // Carrier information
         // 0E = False carrier indication
@@ -366,11 +403,16 @@ always_ff @(posedge clk_rx) begin
         // FF = Carrier Sense
         // (not sure how this works on RGMII at 10/100)
         // But let's just ignore it for now
+        if (last_rx_dv != rx_dv || last_rx_err != rx_err)
+          count_carrier <= count_carrier + 1'd1;
       end // 2'b00
-      2'b10: begin
+
+      2'b11: begin // 11 = DV and ERR (comes on wire as 10)
         // Transmit error propagation, not sure what to do if we get this while idle,
         // maybe just ignore it.
         // Data is ignored.
+        if (last_rx_dv != rx_dv || last_rx_err != rx_err)
+          count_receive_err <= count_receive_err + 1'd1;
       end // 2'b00
       endcase // rx_dv and rx_err
         
