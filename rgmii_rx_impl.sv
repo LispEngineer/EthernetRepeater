@@ -5,6 +5,10 @@
 // See rgmii_rx.md for details.
 // NOTE: SINGLE CLOCK MODULE!
 
+// Marvel 88E1111 Rev M Section 2.2.3.1:
+// The MAC must hold TX_EN (TX_CTL) low until the MAC has ensured that 
+// TX_EN (TX_CTL) is operating at the same speed as the PHY.
+
 `ifdef IS_QUARTUS // Defined in Assignments -> Settings -> ... -> Verilog HDL input  logic 
 // This doesn't work in Questa for some reason. vlog-2892 errors.
 `default_nettype none // Disable implicit creation of undeclared nets
@@ -71,10 +75,22 @@ module rgmii_rx_impl #(
   output logic                  fifo_aclr, // Asynchronous clear
   input  logic                  fifo_wr_full,
   output logic                  fifo_wr_req,
-  output logic [FIFO_WIDTH-1:0] fifo_wr_data
+  output logic [FIFO_WIDTH-1:0] fifo_wr_data,
+
+  ////////////////////////////////////////////////////
+  // Status outputs
+
+  // From interframe
+  output logic link_up,
+  output logic full_duplex,
+  output logic speed_1000,
+  output logic speed_100,
+  output logic speed_10,
 
   ////////////////////////////////////////////////////
   // Debugging outputs
+
+  output logic in_band_differ // Are the _h and _l different during 00 in-band?
 );
 
 // How many packets did we drop because we
@@ -97,10 +113,11 @@ end // synchronizer
 
 
 
-`define BOGUS
+// `define BOGUS // If commented out, do our real RX receiver
+
 `ifdef BOGUS
 
-///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////
 // Bogus RGMII Receiver to test the RAM and FIFO
 
 // Simple state machine:
@@ -277,8 +294,93 @@ end // Bogus State Machine
 
 `else // NOT BOGUS
 
-////////////////////////////////////////////////////////////////////////
-// RGMII Receiver
+////////////////////////////////////////////////////////////////////////////////////////
+// Real RGMII Receiver
+
+localparam S_IDLE = 0;
+
+logic [3:0] state = S_IDLE;
+
+logic rx_nibble = '0; // Receiving low or high nibble? (low = 0, high = 1)
+logic [7:0] rx_byte;  // Byte currently being received
+
+// Retrieve the two signals from the high & low of rx_ctl
+// (See RGMII Spec 3.0 and 3.4)
+logic rx_dv; // High side of rx_ctl
+logic rx_err; // Low side of rx_ctl as rx_dv & rx_err
+
+// The last inter-frame data we got
+logic [3:0] last_interframe;
+logic ddr_data;
+
+always_comb begin
+  rx_dv = rx_ctl_h;
+  rx_err = rx_ctl_h ^ rx_ctl_l; // Error = different rx_ctl_l and _h
+
+  // Interpret our interframe data stream
+  link_up = last_interframe[0];
+  full_duplex = last_interframe[3];
+  speed_1000 = last_interframe[2:1] == 2'b10;
+  speed_100 = last_interframe[2:1] == 2'b01;
+  speed_10 = last_interframe[2:1] == 2'b00;
+  ddr_data = speed_1000;
+end // Decode rx_ctl
+
+always_ff @(posedge clk_rx) begin
+
+  if (reset) begin
+
+  end else begin
+
+    case (state)
+
+    S_IDLE: begin /////////////////////////////////////////////////////////
+
+      // See Table 4 in section 3.4 of RGMII Spec 2.0
+      // See Marvell 88E1111 Rev M section 2.2.3.2 which implies support for in-band
+      // Do what needs to be done for error and rx_err (TODO: we could just
+      // simplify this to rx_ctl_h and rx_ctl_l?)
+      case ({rx_dv, rx_err})
+      2'b00: begin
+        // Full idle - normal inter-frame situation
+        // Bit 0: link status (1 = up)
+        // Bit 2-1: speed: 00 = 2.5, 01 = 25, 10 = 125 MHz, 11 = Reserved
+        // Bit 3: Duplex: 1 = full
+        // Nibbles are the same on high and low edge of rx_clk
+        if (rx_data_h != rx_data_l) begin
+          in_band_differ <= '1;
+          // Don't save the data, it may be unreliable
+        end else begin
+          last_interframe <= rx_data_h;
+          in_band_differ <= '0;
+        end
+      end // 2'b00
+      2'b11: begin
+        // TODO: Normal data receiption
+      end // 2'b00
+      2'b01: begin
+        // Carrier information
+        // 0E = False carrier indication
+        // 0F = Carrier Extend
+        // 1F = Carrier Extend Error
+        // FF = Carrier Sense
+        // (not sure how this works on RGMII at 10/100)
+        // But let's just ignore it for now
+      end // 2'b00
+      2'b10: begin
+        // Transmit error propagation, not sure what to do if we get this while idle,
+        // maybe just ignore it.
+        // Data is ignored.
+      end // 2'b00
+      endcase // rx_dv and rx_err
+        
+    end // S_IDLE
+
+    endcase // current state case
+
+  end // reset
+
+end // main state machine always_ff
 
 
 `endif // NOT BOGUS

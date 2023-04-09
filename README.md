@@ -81,6 +81,10 @@ added by HSMC card. Some useful features:
   * FIFO for putting notifications of fully received packets into
   * RAM buffer for putting full packet data into (including preamble/SFD for now)
   * "Bogus" test implementation of receiver to exercise RAM, FIFO
+  * In-Band metadata connected
+    * Tested at 10/100 Full/Half and 1000 Full
+      * (PHY will not autonegotiate a 1000 Half link)
+    * Shows 1000 speed when no connection (Reg20, bits 6:4)
 
 * Manual management interface
   * Store the register # from the switches SW4-0 (Key 0)
@@ -149,6 +153,12 @@ added by HSMC card. Some useful features:
   * Build a streaming output (AXI-Stream?) when we are getting a packet
     * Have an end of packet flag, which shows CRC and framing errors
 
+* Improved CRC generator for Cyclone IV
+  * Build a 3 & 4 entry XOR LUT mechanism to target the Cyclone IV's 4-LUT
+  * Rewrite the CRC to use these 3/4-LUTs to reduce the combinatorial depth
+  * Reference: Cyclone IV Device Handbook, Volume 1, Section I, Part 2,
+    LE Operating Modes -> Normal Mode, Figure 2-2
+
 * Enable reduced preamble mode for Management Interface?
 
 * Simulate the PHY side of the Management Interface (for reads)
@@ -164,12 +174,14 @@ added by HSMC card. Some useful features:
 * Red LEDs 17-16: LCD:
   * 17 = lcd_busy
   * 16 = lcd_available
-* Green LEDs 3-0: Management Controller/Interface Status
-  * 0 = Busy
-  * 1 = Success
-  * 2 = Activate
-  * 3 = MDC (Management Clock)
-* Green LED 5: Eth PHY configuration error (bad)
+* Green LEDs 5-0: PHY RX in-band status
+  * 0 = Link Up
+  * 1 = Full Duplex
+  * 2 = 10
+  * 3 = 100
+  * 4 = 1000
+  * 5 = RX in-band data differs on H and L edges
+  in_band_differ, speed_1000, speed_100, speed_10, full_duplex, link_up
 * Green LED 6: Eth PHY configuration complete
 * Green LED 7: PLL Lock status for 125, 25, 2.5 MHz from 50
 * Green LED 8: Heartbeat
@@ -196,6 +208,12 @@ added by HSMC card. Some useful features:
 * Quartus is ignoring my GLOBAL_CLOCK settings for a few of the clocks.
   [This](https://www.intel.com/content/www/us/en/programmable/quartushelp/14.1/mergedProjects/msgs/msgs/wfygr_fygr_user_global_ignored.htm) talks about it
   but doesn't really explain why.
+
+* At 10/Full, the PHY gets an in-band data mismatch every time there is a packet received.
+  * This is repeatable, just send ARP requests while it is in 10/Half.
+  * Also 10/Full, 100/Half and 100/Full
+  * Harder to say, but also seems to happen at 1000/Full (blink is so faint)
+  * TODO: Show the H & L sides when there is a packet mismatch?
 
 ## Known Bugs
 

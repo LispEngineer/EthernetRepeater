@@ -494,10 +494,12 @@ always_comb begin
 
   // Show the results
   LEDR[15:0] = mi_data_in;
+  /*
   LEDG[0] = mi_busy;
   LEDG[1] = mi_success;
   LEDG[2] = mi_activate;
   LEDG[3] = mdc;
+  */
 end
 
 ///////////////
@@ -550,7 +552,7 @@ logic [15:0] ep1_reg20;
 logic [15:0] ep1_soft_reset_checks;
 
 // Output some internals
-assign LEDG[5] = ep1_config_error;
+// assign LEDG[5] = ep1_config_error;
 assign LEDG[6] = ep1_configured;
 assign hex_display[23:16] = ep1_soft_reset_checks; // ep1_reg20[7:0]; // Expect E2 in reg20
 // assign LEDR[15:0] = ep1_seen_states;
@@ -821,7 +823,7 @@ end
 
 // ETHERNET RECEIVER TOP LEVEL ////////////////////////////////////////////////
 
-// `define ENABLE_ETHERNET_RECEIVER
+`define ENABLE_ETHERNET_RECEIVER
 `ifdef ENABLE_ETHERNET_RECEIVER
 
 // Wait at least 2s before using the LCD
@@ -882,18 +884,50 @@ logic [3:0] ram_read_latency_count;
 // Which byte should we display? (Retrieved from Eth RX RAM earlier)
 logic [7:0] byte_to_display; 
 
+// PHY Status
+logic link_up, full_duplex, speed_10, speed_100, speed_1000;
+// PHY Debugging
+logic in_band_differ;
+
+assign LEDG[5:0] = {in_band_differ, speed_1000, speed_100, speed_10, full_duplex, link_up};
+
+// DDR inputs
+logic rx_ctl_l, rx_ctl_h;
+logic [3:0] rx_data_l;
+logic [3:0] rx_data_h;
+
+ddr_input_1	ddr_input_1_inst (
+	.inclock   (ENET1_RX_CLK),
+	.datain    (ENET1_RX_DV),
+	.dataout_h (rx_ctl_h),
+	.dataout_l (rx_ctl_l)
+);
+ddr_input_4	ddr_input_4_inst (
+	.inclock   (ENET1_RX_CLK),
+	.datain    (ENET1_RX_DATA),
+	.dataout_h (rx_data_h),
+	.dataout_l (rx_data_l)
+);
+
 
 rgmii_rx ethernet_rx (
-  .clk_rx(CLOCK_50), // FIXME: We are using BOGUS Ethernet Receiver for now
+  .clk_rx(ENET1_RX_CLK), // Use CLOCK_50 if using BOGUS Ethernet Receiver
   .reset('0), // FIXME: Implement
-  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing)
+  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing) - UNUSED
 
   // Inputs from PHY (after DDR conversion)
-  // FIXME: Connect these when not using BOGUS
-  .rx_ctl_h('0), // RX_DV
-  .rx_ctl_l('0), // RX_ER XOR RX_DV
-  .rx_data_h('0),
-  .rx_data_l('0),
+  .rx_ctl_h(rx_ctl_h), // RX_DV
+  .rx_ctl_l(rx_ctl_l), // RX_ER XOR RX_DV
+  .rx_data_h(rx_data_h),
+  .rx_data_l(rx_data_l),
+
+  // Status & Debugging outputs
+  .link_up(link_up),
+  .full_duplex(full_duplex),
+  .speed_1000(speed_1000),
+  .speed_100(speed_100),
+  .speed_10(speed_10),
+  .in_band_differ(in_band_differ),
 
   // RAM read interface
   .clk_ram_rd(CLOCK_50),
@@ -979,11 +1013,13 @@ logic [2:0] erx_state = S_ERX_AWAIT_FIFO;
 logic [7:0] packets_received = '0;
 
 // Display internal info on our hex display
+/*
 assign hex_display[3:0] = {1'b0, erx_state};
 assign hex_display[7:4] = fifo_rd_empty ? '0 : 4'd1;
 assign hex_display[31:24] = packets_received;
 assign hex_display[23:16] = byte_to_display;
 assign hex_display[15:8] = fifo_buf_num;
+*/
 
 always_ff @(posedge CLOCK_50) begin
   

@@ -52,7 +52,22 @@ module rgmii_rx #(
   // Send L bits while the clock is low [7:4]
   // See RGMII 2.0 spec section 3.0
 
-  // RAM & FIFO Outputs ////////////////////////
+  ////////////////////////////////////////////////////
+  // Status outputs
+
+  // From interframe in-band data
+  output logic link_up,
+  output logic full_duplex,
+  output logic speed_1000,
+  output logic speed_100,
+  output logic speed_10,
+
+  ////////////////////////////////////////////////////
+  // Debugging outputs
+  output logic in_band_differ,
+
+  ////////////////////////////////////////////////////
+  // RAM & FIFO Outputs
 
   // RAM read - in its own clock domain
   input  logic                 clk_ram_rd,
@@ -65,9 +80,6 @@ module rgmii_rx #(
   output logic                  fifo_rd_empty,
   input  logic                  fifo_rd_req,
   output logic [FIFO_WIDTH-1:0] fifo_rd_data
-
-  ////////////////////////////////////////////////////
-  // Debugging outputs
 );
 
 // RAM & FIFO /////////////////////////////////////////////////////
@@ -130,6 +142,14 @@ rgmii_rx_impl #(
   .clk_rx(clk_rx),
   .reset(reset),
   .ddr_rx(ddr_rx),
+
+  // Status & Debugging outputs
+  .link_up(link_up),
+  .full_duplex(full_duplex),
+  .speed_1000(speed_1000),
+  .speed_100(speed_100),
+  .speed_10(speed_10),
+  .in_band_differ(in_band_differ),
 
   // PHY interface
   .rx_ctl_h(rx_ctl_h),
