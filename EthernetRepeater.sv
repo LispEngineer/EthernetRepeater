@@ -878,7 +878,9 @@ localparam RAM_READ_START = 11'd7 + 11'd1 + 11'd6 + 11'd6 + 11'd2;
 logic [10:0] ram_read_last; // Last ram_read_pos to process before ending
 
 // Match this to the setting in rgmii_rx.sv: USE_REGISTERED_OUTPUT_RAM
-localparam RAM_READ_LATENCY = 4'd1;
+// USE_REGISTERED_OUTPUT_RAM = 4'd2
+// Otherwise = 4'd1
+localparam RAM_READ_LATENCY = 4'd2;
 logic [3:0] ram_read_latency_count;
 
 // Which byte should we display? (Retrieved from Eth RX RAM earlier)
@@ -1147,7 +1149,20 @@ always_ff @(posedge CLOCK_50) begin
       // Save it and begin processing next state. (Okay, we could
       // technically combine those states, but whatever.)
       ram_rd_ena <= '0; // In case we are in 1-cycle latency RAM
+
+      // Just display the lower nibble
+      /*
+      if (ram_rd_data[3:0] < 4'd10)
+        byte_to_display <= {4'h3, ram_rd_data[3:0]}; // 0-9
+      else
+        byte_to_display <= 8'h41 - 4'd10 + ram_rd_data[3:0]; // A-F
+      */
+
+      // Display the whole byte as ASCII
       byte_to_display <= ram_rd_data;
+
+      // Testing if our nibbles are saved backwards
+      // {ram_rd_data[3:0],ram_rd_data[7:4]};
       erx_state <= S_ERX_AWAIT_SCREEN;
     end
 

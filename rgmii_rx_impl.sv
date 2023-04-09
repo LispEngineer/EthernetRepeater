@@ -507,6 +507,7 @@ always_ff @(posedge clk_rx) begin
           // Write our next byte to RAM (recived a byte at a time)
           byte_pos <= byte_pos + 1'd1;
           ram_wr_ena <= '1;
+          ram_wr_addr <= ram_pos;
           ram_wr_data <= {rx_data_l, rx_data_h};
 
         end else begin
@@ -516,6 +517,7 @@ always_ff @(posedge clk_rx) begin
             // Getting the 2nd half of a nibble, so write the byte to current position
             ram_wr_ena <= '1;
             ram_wr_data <= {rx_data_h, cur_byte[3:0]};
+            ram_wr_addr <= ram_pos;
           end else begin
             // First half of the nibble, save it and increment counter
             byte_pos <= byte_pos + 1'd1;
