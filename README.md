@@ -238,12 +238,19 @@ added by HSMC card. Some useful features:
 * The packets we start to receive get ended with 0,1 - carrier something - according to
   our counters. They don't have errors (receive error counter is 0) and don't have
   normal ends.
+  * Register 20.15 is used to block carrier extension in GMII (Sec 2.2.3.2)
+  * Says to refer to the White Paper "TRR Byte Stuffing and MACs"
 
 * If we get RX_ERR (RX_ER, RXERR), what do we do with the data in that byte/nibble?
   * For now, I am just ignoring it
 
 
 ## Known Bugs
+
+* Receives packets fine at 10/100 - may have an off by one error on length because it
+  uses the final byte write position and not the actual length.
+* Does NOT receive packets at 1000. Gets the correct length, but the data is all messed
+  up.
 
 * Timing analyzer does not like the CRC generator running at 125MHz; compiling gives a Critical Warning
   * Open Timing Analyzer -> Tasks -> Reports -> Custom Reports -> Report Timing Closure Recommendations and use 20,000 paths
