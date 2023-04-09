@@ -60,12 +60,16 @@ module eth_phy_88e1111_controller #(
   output logic config_error,
 
   // Debugging outputs
-  output logic [5:0] d_state
+  output logic [5:0] d_state,
+  output logic [15:0] d_reg0,
+  output logic [15:0] d_reg20,
+  output logic [15:0] d_seen_states
 );
 
 initial phy_reset = '1;
 initial config_error <= '0;
 initial connected <= '0;
+initial d_seen_states <= '0;
 
 logic reset_into_mii = '0;
 logic c_mii_busy;
@@ -108,20 +112,21 @@ mii_management_interface #(
 
 
 // Main controller state machine states
-localparam S_POWER_ON = 0,
-           S_POST_RESET_WAIT = 1,
-           S_STARTUP_READ_20 = 2,
-           S_STARTUP_WRITE_20 = 3,
-           S_STARTUP_VERIFY_20 = 4,
-           S_REGISTER_READ_START = 5,
-           S_REGISTER_WRITE_START = 6,
-           S_REGISTER_READ_AWAIT = 7,
-           S_REGISTER_WRITE_AWAIT= 8,
-           S_SOFT_RESET_BEGIN = 9,
-           S_SOFT_RESET_WRITE_0 = 10,
-           S_SOFT_RESET_WAIT = 11,
-           S_SOFT_RESET_VERIFY = 12,
-           S_CUSTOMER_IDLE = 13;
+localparam S_POWER_ON             = 6'd0,
+           S_POST_RESET_WAIT      = 6'd1,
+           S_STARTUP_READ_20      = 6'd2,
+           S_STARTUP_WRITE_20     = 6'd3,
+           S_STARTUP_REREAD_20    = 6'd4,
+           S_STARTUP_VERIFY_20    = 6'd5,
+           S_REGISTER_READ_START  = 6'd6,
+           S_REGISTER_WRITE_START = 6'd7,
+           S_REGISTER_READ_AWAIT  = 6'd8,
+           S_REGISTER_WRITE_AWAIT = 6'd9,
+           S_SOFT_RESET_BEGIN     = 6'd10,
+           S_SOFT_RESET_WRITE_0   = 6'd11,
+           S_SOFT_RESET_WAIT      = 6'd12,
+           S_SOFT_RESET_VERIFY    = 6'd13,
+           S_CUSTOMER_IDLE        = 6'd14;
 
 // Register IDs
 localparam R_CONTROL  = 5'd0,
@@ -147,7 +152,7 @@ assign d_state = state;
 logic [5:0] state_after_rw; // What state after a read/write to MII?
 logic [5:0] state_after_soft_reset; // What state after we do soft reset?
 logic success_after_rw; // Did a read/write to MII return success?
-logic [5:0] reg_to_rw; // Which register to read/write in MII
+logic [4:0] reg_to_rw; // Which register to read/write in MII
 logic [15:0] saved_read; // What we just read from MII
 logic [15:0] val_to_write; // What we should write to MII
 logic was_busy; // Track when MII newly becomes busy
@@ -165,8 +170,15 @@ always_ff @(posedge clk) begin
     reset_into_mii <= '1;
     busy <= '1;
     success <= '0;
+    config_error <= '0;
+
+    d_seen_states <= '0;
+    d_reg0 <= '0;
+    d_reg20 <= '0;
 
   end else begin
+
+    d_seen_states <= d_seen_states | (16'b1 << state);
 
     case (state)
 
@@ -212,24 +224,27 @@ always_ff @(posedge clk) begin
     ////////////////////////////////////////////////////////////////////
     // Startup configuration routine
 
+    S_STARTUP_REREAD_20,
     S_STARTUP_READ_20: begin //////////////////////////////////////////////
-      // We need to read register 20
+      // We need to read (or re-read) register 20
       config_error <= '0;
       reg_to_rw <= R_PHY_EXT_SPEC_CTRL;
       state <= S_REGISTER_READ_START;
-      state_after_rw <= S_STARTUP_WRITE_20;
+      state_after_rw <= (state == S_STARTUP_READ_20) ? S_STARTUP_WRITE_20 : S_STARTUP_VERIFY_20;
     end // S_STARTUP_READ_20
 
     S_STARTUP_WRITE_20: begin ///////////////////////////////////////////
       // Set Reg 20 bits 7 and 1 to adjust RX and TX clocks in PHY
+      d_reg20 <= saved_read;
       reg_to_rw <= R_PHY_EXT_SPEC_CTRL; // Should already be set
       val_to_write <= saved_read | REG20_ADJ_CLKs;
       state <= S_REGISTER_WRITE_START;
-      state_after_rw <= S_STARTUP_VERIFY_20;
+      state_after_rw <= S_STARTUP_REREAD_20;
     end // S_STARTUP_WRITE_20
 
     S_STARTUP_VERIFY_20: begin //////////////////////////////////////////
       // Verify that bits 7 & 1 are set in register 20
+      d_reg20 <= saved_read;
       if ((saved_read & REG20_ADJ_CLKs) != REG20_ADJ_CLKs) begin
         config_error <= '1;
         $warning("Could not configure register 20");
@@ -247,12 +262,12 @@ always_ff @(posedge clk) begin
       // cycle delayed
       busy <= c_mii_busy;
       success <= c_mii_success;
-      mii_data_in <= c_mii_data_in;
+      mii_data_in <= c_mii_data_in; // data IN is read IN from the PHY
 
       c_mii_activate <= mii_activate;
       c_mii_read <= mii_read;
       c_mii_register <= mii_register;
-      c_mii_data_out <= mii_data_out;
+      c_mii_data_out <= mii_data_out; // data OUT is data written OUT to the PHY
     end
 
     ////////////////////////////////////////////////////////////////////
@@ -266,11 +281,11 @@ always_ff @(posedge clk) begin
         // Do nothing
       end else begin
         c_mii_activate <= '1;
-        c_mii_read <= state == S_REGISTER_READ_START;
+        c_mii_read <= (state == S_REGISTER_READ_START);
         c_mii_register <= reg_to_rw;
         if (state == S_REGISTER_WRITE_START)
-          c_mii_data_in <= val_to_write;
-        state <= state == S_REGISTER_READ_START ? S_REGISTER_READ_AWAIT : S_REGISTER_WRITE_AWAIT;
+          c_mii_data_out <= val_to_write; // data OUT is data written OUT to the PHY
+        state <= (state == S_REGISTER_READ_START) ? S_REGISTER_READ_AWAIT : S_REGISTER_WRITE_AWAIT;
         was_busy <= '0;
       end
     end // S_REGISTER_READ_START
@@ -287,7 +302,7 @@ always_ff @(posedge clk) begin
       end else if (was_busy && !c_mii_busy) begin
         // Just finished being busy
         if (state == S_REGISTER_READ_AWAIT)
-          saved_read <= c_mii_data_out;
+          saved_read <= c_mii_data_in;
         state <= state_after_rw;
         success_after_rw <= c_mii_success;
       end else if (!c_mii_busy) begin
@@ -309,6 +324,7 @@ always_ff @(posedge clk) begin
     end // S_SOFT_RESET_BEGIN
 
     S_SOFT_RESET_WRITE_0: begin ///////////////////////////////////////////
+      d_reg0 <= saved_read;
       // Set Reg 0 bit 15 to do a soft reset
       reg_to_rw <= R_CONTROL; // Should already be set
       val_to_write <= saved_read | REG0_SOFT_RESET;
@@ -330,7 +346,8 @@ always_ff @(posedge clk) begin
 
     S_SOFT_RESET_VERIFY: begin //////////////////////////////////////////
       // Ensure that reset is done
-      if (saved_read & REG0_SOFT_RESET == '0) begin
+      d_reg0 <= saved_read;
+      if ((saved_read & REG0_SOFT_RESET) == '0) begin
         state <= state_after_soft_reset;
       end else begin
         // Need to try again

@@ -257,7 +257,7 @@ module EthernetRepeater(
 
 // Zero out unused outputs
 always_comb begin
-  LEDG[6:5] = '0;
+  LEDG[5] = '0;
   // LEDR[16] = '0;
   /*
   HEX0 = '1; // These LED segments are OFF when logic 1
@@ -449,7 +449,8 @@ localparam R_CONTROL  = 5'd0,
 
 // What should we activate?
 logic        mi_read = '1;
-logic  [4:0] mi_phy_address = 5'b1_0001; // 10000 for ENET0, 10001 for ENET1
+localparam ENET1_PHY_ADDRESS = 5'b1_0001; // 10000 for ENET0, 10001 for ENET1
+logic  [4:0] mi_phy_address = ENET1_PHY_ADDRESS;
 logic  [4:0] mi_register = R_STATUS;
 logic [15:0] mi_data_in = '0;
 logic [15:0] mi_data_out = '0;
@@ -472,7 +473,6 @@ ALTIOBUF ALTIOBUF_mdio ( // OPEN DRAIN!!!
 // Tie everything to ETH1 and our display
 always_comb begin
   ENET1_MDC = mdc;
-  ENET1_RST_N = KEY[3]; // Take chip out of reset (with logical 1)
   // ENET1_MDIO = mdio;
 
   // Show the results
@@ -486,11 +486,15 @@ end
 
 ///////////////
 
+// Ideally we canuse our MII Management Interface and our ETH PHY 88E1111 Controller
+// in an identical manner as the controller willact as an MII Management Interface
+// passthrough when it's not busy
 
+`ifdef USE_MII_MANAGEMENT_INTERFACE
 // Instantiate one MII Management Interface
 mii_management_interface #(
   // Leave all parameters at default, usually
-  .CLK_DIV(60)
+  .CLK_DIV()
 ) mii_management_interface1 (
   // Controller clock & reset
   .clk(CLOCK_50),
@@ -513,6 +517,62 @@ mii_management_interface #(
   .data_in    (mi_data_in)
 );
 
+assign ENET1_RST_N = KEY[3]; // Take chip out of reset (with logical 1)
+
+
+`else // We will use our 88E1111 controller
+
+logic enet1_reset;
+assign ENET1_RST_N = ~enet1_reset;
+
+logic ep1_config_error;
+logic [5:0] ep1_state;
+logic [15:0] ep1_seen_states;
+logic [15:0] ep1_reg0;
+logic [15:0] ep1_reg20;
+
+// Output some internals
+assign LEDG[6] = ep1_config_error;
+assign hex_display[23:16] = ep1_reg20[7:0]; // Expect E2
+// assign LEDR[15:0] = ep1_seen_states;
+
+eth_phy_88e1111_controller #(
+  // Leave all parameters at default, usually
+  .PHY_MII_ADDRESS(ENET1_PHY_ADDRESS)
+) eth_phy_88e1111_controller (
+  // Controller clock & reset
+  .clk(CLOCK_50),
+  .reset(~KEY[3]),
+
+  // External management bus connections
+  .mdc(mdc),
+  .mdio_e(mdio_e), .mdio_i(mdio_i), .mdio_o(mdio_o),
+  .phy_reset(enet1_reset),
+
+  // Status
+  .busy(mi_busy),
+  .success(mi_success),
+
+  // Management interface passthrough:
+  // This adds 1 cycle latency on all requests to MII
+  .mii_activate(mi_activate),
+  .mii_read    (mi_read),
+  .mii_register(mi_register),
+  .mii_data_out(mi_data_out), // Data being written
+  .mii_data_in (mi_data_in),  // Data being read
+
+  // Status outputs
+  .config_error(ep1_config_error),
+
+  // Debugging outputs
+  .d_state(ep1_state),
+  .d_reg0(ep1_reg0),
+  .d_reg20(ep1_reg20),
+  .d_seen_states(ep1_seen_states)
+);
+
+`endif
+
 
 /*
 * Manual management interface
@@ -533,7 +593,7 @@ mii_management_interface #(
 
 // Show the stored register ID in Hex 7-6
 assign hex_display[31:24] = mi_register;
-assign hex_display[15:0] = mi_data_out;
+assign hex_display[15:0] = mi_data_out; // Data read in from ETH PHY
 
 // Note: "Each push-button switch provides a HIGH logic level when it is not pressed,
 //        and provides a low logic level when depressed."
