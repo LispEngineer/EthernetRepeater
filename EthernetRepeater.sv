@@ -650,13 +650,16 @@ always_ff @(posedge CLOCK_50) begin
     mi_activate <= '1;
     mi_read <= '1;
     // mi_register is already set
-  end else if (!mi_busy && !mi_activate && !KEY[2] && KEY[2] != last_key[2]) begin
+  end 
+`ifndef ENABLE_ETHERNET_TRANSMITTER // This uses KEY[2] too
+  else if (!mi_busy && !mi_activate && !KEY[2] && KEY[2] != last_key[2]) begin
     // Activate a write
     mi_activate <= '1;
     mi_read <= '0;
     mi_data_out <= SW[15:0];
     // mi_register is already set
   end
+`endif // ENABLE_ETHERNET_TRANSMITTER
 
 end // MDIO Button Handler
 
@@ -709,14 +712,53 @@ end
 // At startup, Register 20.1 is 0 (no delay for TXD outputs)
 // and Register 20.7 is 0 (no added delay for RX_CLK)
 
+`define ENABLE_ETHERNET_TRANSMITTER
 `ifdef ENABLE_ETHERNET_TRANSMITTER
 
-logic clock_eth_tx, clock_eth_tx_shifted, clock_eth_tx_shifted2, clock_eth_tx_lock;
+logic clock_eth_tx, clock_eth_tx_lock;
+logic clock_eth_tx_shifted, clock_eth_tx_shifted2;
+
+
+logic clk_eth_125, clk_eth_25, clk_eth_2p5;
 
 `define SPEED_1000
+`ifdef SPEED_1000
+assign clock_eth_tx = clk_eth_125;
+`define USE_DDR 1'b1
+
+`elsif SPEED_100
+assign clock_eth_tx = clk_eth_25;
+`define USE_DDR 1'b0
+
+`elsif SPEED_10
+assign clock_eth_tx = clk_eth_2p5;
+`define USE_DDR 1'b0
+`endif
+
+`ifndef USE_ETH_WITH_CLOCK_SHIFT
+assign clock_eth_tx_shifted = clock_eth_tx;
+assign clock_eth_tx_shifted2 = clock_eth_tx;
+`endif
+
+pll_50_to_all_eth	pll_50_to_all_eth_inst (
+  // Using CLOCK2_50 or CLOCK3_50 with CLOCK_50 gives: Critical Warning (176598): PLL "pll_50_to_all_eth:pll_50_to_all_eth_inst|altpll:altpll_component|pll_50_to_all_eth_altpll:auto_generated|pll1" input clock inclk[1] is not fully compensated because it is fed by a remote clock pin "Pin_AG14"
+	.inclk0 ( CLOCK2_50 ),
+	.inclk1 ( CLOCK3_50 ), 
+	.c0 ( clk_eth_125 ), // 125 MHz
+	.c1 ( clk_eth_25 ), // 25 MHz
+	.c2 ( clk_eth_2p5 ), // 2.5 MHz
+	.locked (clock_eth_tx_lock),
+
+  // Not using these
+	.areset ( '0 ), // FIXME: Add PLL reset
+	.activeclock (), // Using CLOCK_50 or CLOCK2_50?
+	.clkbad0 (),
+	.clkbad1 (),
+);
+
+`ifdef USE_ETH_WITH_CLOCK_SHIFT
 
 `ifdef SPEED_10
-`define USE_DDR 1'b0
 pll_50_to_2p5_with_shift	pll_50_to_2p5_with_shift_inst (
 	.areset('0),
 	.inclk0(CLOCK_50),
@@ -728,7 +770,6 @@ pll_50_to_2p5_with_shift	pll_50_to_2p5_with_shift_inst (
 
 `elsif SPEED_100
 
-`define USE_DDR 1'b0
 // FIXME: Make this a 10ns shift
 pll_50_to_25_with_shift	pll_50_to_25_with_shift_inst (
 	.areset('0),
@@ -741,7 +782,7 @@ pll_50_to_25_with_shift	pll_50_to_25_with_shift_inst (
 
 `elsif SPEED_1000
 
-`define USE_DDR 1'b1
+
 pll_50_to_125_with_shift	pll_50_to_125_with_shift_inst (
 	.areset('0),
 	.inclk0(CLOCK_50),
@@ -751,7 +792,8 @@ pll_50_to_125_with_shift	pll_50_to_125_with_shift_inst (
 	.locked(clock_eth_tx_lock)
 );
 
-`endif
+`endif // SPEED_*
+`endif // USE_ETH_WITH_CLOCK_SHIFT
 
 // Use a PLL to get a 90⁰ delayed version of the RX clock
 // which in practice works at 2.5 MHz input even though the
@@ -813,7 +855,7 @@ ddr_output_1 ddr_output1_rgmii1_tx_ctl (
 	.dataout(ENET1_TX_EN)
 );
 
-// Transmit when KEY[1] is pushed.
+// Transmit when KEY[2] is pushed.
 // Note: "Each push-button switch provides a high logic level when it is not pressed,
 //        and provides a low logic level when depressed."
 logic [3:0] last_key_tx = '1;
@@ -836,7 +878,7 @@ always_ff @(posedge CLOCK_50) begin
     // The transmitter is busy, nothing to do
   end else if (send_activate) begin
     // Do nothing
-  end else if (!send_busy && !send_activate && !KEY[1] && KEY[1] != last_key_tx[1]) begin
+  end else if (!send_busy && !send_activate && !KEY[2] && KEY[2] != last_key_tx[2]) begin
     // We're not busy, not awaiting activation, and the key was just pressed
     // (remember key down reports logic 0)
     send_activate <= '1;
