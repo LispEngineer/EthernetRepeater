@@ -80,11 +80,16 @@ added by HSMC card. Some useful features:
 * RGMII Receive Capability
   * FIFO for putting notifications of fully received packets into
   * RAM buffer for putting full packet data into (including preamble/SFD for now)
-  * "Bogus" test implementation of receiver to exercise RAM, FIFO
+  * (Disabled) "Bogus" test implementation of receiver to exercise RAM, FIFO
   * In-Band metadata connected
     * Tested at 10/100 Full/Half and 1000 Full
       * (PHY will not autonegotiate a 1000 Half link)
     * Shows 1000 speed when no connection (Reg20, bits 6:4)
+  * Receiving of 10/100 data - totally raw
+    * Does not track preamble, SFD, FCS/CRC - just stores all data received while RX_DV
+    * BUG: Reports length off by one
+  * BUG: Receiving 1000 data does not work
+    * BUG: Looks like the DDR data receiver is ... off
 
 * Manual management interface
   * Store the register # from the switches SW4-0 (Key 0)
@@ -119,6 +124,8 @@ added by HSMC card. Some useful features:
 
 * Simple RGMII TX interface
   * Handle changing speeds dynamically & reconfiguring delay PLLs
+    * Or use a clock multiplexer and choose the right clock
+    * Ensure to hold TX_DV low while switching clock
   * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
     * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
   * Use a RAM with 2048 byte-long packet slots (enough for the usual maximum frame size)
@@ -127,18 +134,17 @@ added by HSMC card. Some useful features:
     * RAM slot to send
     * CRC included (or not)
     * (Figure out how to parcel out RAM slots)
-  * Add some bus for:
+      * Maybe start with a FIFO of all N slots filled up
+      * Then as a slot is asked to be sent, re-add it to the FIFO
+      * This can fail badly if someone doesn't send a slot, so maybe not a good idea...
+  * Add some bus for
     * Putting packet data into the transmit RAM slots
     * Adding an entry to the transmit FIFO
 
 * Simple RGMII RX interface
-  * Handle RGMII configuration frames; use to determine DDR RX
-  * Handle all 3 speeds
-  * Receive frame bytes into a RAM buffer
-    * Rotate receives through multiple buffers
-    * Check frame CRC
-    * Include flags on the received frames
-  * Handle non-nibble/byte aligned receives (?)
+  * Handle all 3 speeds: 10/100 work; 1000 does not
+  * Check frame CRC
+  * Handle non-nibble/byte aligned receives (? and see below)
   * Expand RAM size:
     * Allow reads 32 or 64 bits at a time, but still write 1 byte at a time with byte selects
     * Same, but write a word at a time
@@ -158,7 +164,7 @@ added by HSMC card. Some useful features:
     delimiter" byte is included in the received data. Some of the preamble nibbles 
     may be lost."
 
-* Improved CRC generator for Cyclone IV
+* Improved CRC generator specifically for Cyclone IV
   * Build a 3 & 4 entry XOR LUT mechanism to target the Cyclone IV's 4-LUT
   * Rewrite the CRC to use these 3/4-LUTs to reduce the combinatorial depth
   * Reference: Cyclone IV Device Handbook, Volume 1, Section I, Part 2,
@@ -185,8 +191,7 @@ added by HSMC card. Some useful features:
   * 2 = 10
   * 3 = 100
   * 4 = 1000
-  * 5 = RX in-band data differs on H and L edges
-  in_band_differ, speed_1000, speed_100, speed_10, full_duplex, link_up
+  * 5 = RX in-band data differs on H and L edges - happens sometimes
 * Green LED 6: Eth PHY configuration complete
 * Green LED 7: PLL Lock status for 125, 25, 2.5 MHz from 50
 * Green LED 8: Heartbeat
@@ -197,10 +202,11 @@ added by HSMC card. Some useful features:
 * KEY 3: Reset Ethernet PHY (only)
 * HEX 7-6: Stored MDIO Management Interface register (from key 0)
 * HEX 5-0: Receiver counts
-  * 5-4: # of times we got receive error
-  * 3-2: # of times we got a proper receive
-  * 1-0: # of times interframe differed
-* LCD: Unused
+  * 5-4: Count of received frames ended by a "carrier" message (i.e., RXDV 0, RXERR 1)
+  * 3-0: The 16 bits read from the most recent receive FIFO:
+    crc error, frame error, 3 bits of buffer number, 11 bits of length
+* LCD: Displays 32 characters of received packet data as ASCII starting 
+  after Ethernet frame header (i.e., after 2x MAC & EtherType)
 
 
 ## Open Questions
@@ -216,7 +222,8 @@ added by HSMC card. Some useful features:
   [This](https://www.intel.com/content/www/us/en/programmable/quartushelp/14.1/mergedProjects/msgs/msgs/wfygr_fygr_user_global_ignored.htm) talks about it
   but doesn't really explain why.
 
-* At 10/Full, the PHY gets an in-band data mismatch every time there is a packet received.
+* (This may be out of date)
+  At 10/Full, the PHY gets an in-band data mismatch every time there is a packet received.
   * This is repeatable, just send ARP requests while it is in 10/Half.
   * Also 10/Full, 100/Half and 100/Full
   * Harder to say, but also seems to happen at 1000/Full (blink is so faint)
@@ -241,8 +248,8 @@ added by HSMC card. Some useful features:
   * Register 20.15 is used to block carrier extension in GMII (Sec 2.2.3.2)
   * Says to refer to the White Paper "TRR Byte Stuffing and MACs"
 
-* If we get RX_ERR (RX_ER, RXERR), what do we do with the data in that byte/nibble?
-  * For now, I am just ignoring it
+* If we get RX_ERR (RX_ER, RXERR) with RX_DV, what do we do with the data in that byte/nibble?
+  * For now, I am just ignoring it (not adding it to receive buffer)
 
 
 ## Known Bugs
@@ -250,7 +257,7 @@ added by HSMC card. Some useful features:
 * Receives packets fine at 10/100 - have an off by one error on length because it
   uses the final byte write position and not the actual length.
 
-* Does NOT receive packets at 1000. Gets the correct length (same off by one error as
+* **Does NOT receive packets at 1000.** Gets the correct length (same off by one error as
   above), but the data is all messed up. Expected then Received:
 
         Hi Doug! !"#$%&'   48 69 20 44 6F 75 67 21 20 21 22 23 24 25 26 27
