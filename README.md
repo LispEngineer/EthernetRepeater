@@ -58,24 +58,21 @@ added by HSMC card. Some useful features:
 
 # Current Functionality
 
-* Management Interface - read & write enabled
-  * Visually simulated in Questa
-  * Tested on real PHY for reading
-  * Useful actions:
-    * Position cursor to Row, Col
-    * Clear display (and position cursor to first spot)
+* Ethernet MII Management Interface (MDC/MDIO)
+  * Simulation tested in Questa
+  * Tested on real PHY for reading & writing manually
+  * Initializes PHY at startup and upon reset per 88E1111 timing guidlines
+    * (Does not check for 10 cycles of PHY 25 MHz clock)
+  * Turns on PHY-side TX & RX clock adjustments including soft reset
+  * Outputs `configured` signal once fully initialized
+  * See below for UI interactions
 
 * RGMII Transmit Capability
-  * Works at 10BASE-T: Uses PLL generated 2.5MHz clock & 12ns delay on transmitted GTX clock
-  * Works at 100BASE-T: Uses PLL generated 25MHz clock & 12ns delay on transmitted GTX clock
-  * Works at 1000BASE-T: Uses PLL generated 125MHz clock & 2ns delay on transmitted GTX clock
-    * And sends data on TXD with DDR encoding
-  * Sends a fixed packet
+  * Works at 10/100/1000 using PLL generated clock at 2.5, 25, 125 MHz
+    * And sends data on TXD with DDR encoding at 1000
+    * Sends TX_DV and TX_ER via DDR
+  * Sends a fixed packet (a silly ARP request)
     * Calculates the CRC on the fly and sends it, using [generated HDL](https://bues.ch/cms/hacking/crcgen)
-
-* Built-in LCD
-  * Can put a character anywhere with single activation request
-  * (Cannot initialize screen yet! Works only if screen initialized by previous programming.)
 
 * RGMII Receive Capability
   * FIFO for putting notifications of fully received packets into
@@ -83,28 +80,20 @@ added by HSMC card. Some useful features:
   * (Disabled) "Bogus" test implementation of receiver to exercise RAM, FIFO
   * In-Band metadata connected
     * Tested at 10/100 Full/Half and 1000 Full
-      * (PHY will not autonegotiate a 1000 Half link)
+      * (PHY will not autonegotiate a 1000 Half link with default settings)
     * Shows 1000 speed when no connection (Reg20, bits 6:4)
-  * Receiving of 10/100 data - totally raw
+  * Receives 10/100 data - totally raw (one nibble at a time)
     * Does not track preamble, SFD, FCS/CRC - just stores all data received while RX_DV
     * BUG: Reports length off by one
-  * BUG: Receiving 1000 data does not work
-    * BUG: Looks like the DDR data receiver is ... off
+  * BUG: Receiving 1000 data does not work (one byte at a time with DDR)
+    * BUG: Looks like the DDR data receiver is ... off - see below
 
-* Manual management interface
-  * Store the register # from the switches SW4-0 (Key 0)
-    * Show it on the HEX7-6
-  * Read the stored register (Key 1)
-    * Show it on LEDR15-0
-    * Show it on HEX3-0
-  * Write switches SW15-0 to the stored register (Key 2)
-  * Hardware reset (Key 3)
+* Built-in LCD driver
+  * Can put a character anywhere with single activation request
+  * (Cannot initialize screen yet! Works only if screen initialized by previous programming.)
 
-* Management state machine
-  * Set up PHY side tx/rx clock shift handling
-    * Read reg, write reg, read reg, write reg, wait for soft reset
-  * Passes through access to the MII management interface when setup is complete
-    (with one cycle delay)
+* Miscellaneous
+  * 7-segment driver
 
 
 ## Next Steps
@@ -118,7 +107,7 @@ added by HSMC card. Some useful features:
     * Speed
     * Duplex
     * (Unnecessary for RGMII optional in-band state signaling?)
-  * Could handle interrupts
+  * Enable and handle interrupts
   * Handle changing transmit speed as receive speed changes
     (Use a clock multiplexer)
 
@@ -137,14 +126,14 @@ added by HSMC card. Some useful features:
       * Maybe start with a FIFO of all N slots filled up
       * Then as a slot is asked to be sent, re-add it to the FIFO
       * This can fail badly if someone doesn't send a slot, so maybe not a good idea...
-  * Add some bus for
+  * Add some bus (e.g. AXI4-Lite) for
     * Putting packet data into the transmit RAM slots
     * Adding an entry to the transmit FIFO
 
 * Simple RGMII RX interface
-  * Handle all 3 speeds: 10/100 work; 1000 does not
+  * Handle all 3 speeds: 1000 does not currently work
   * Check frame CRC
-  * Handle non-nibble/byte aligned receives (? and see below)
+  * Handle non-nibble/byte aligned receives (if necessary? and see below)
   * Expand RAM size:
     * Allow reads 32 or 64 bits at a time, but still write 1 byte at a time with byte selects
     * Same, but write a word at a time
@@ -198,15 +187,16 @@ added by HSMC card. Some useful features:
 * SW 4-0: Register address for below (Register decimal 17 is interesting.)
 * KEY 0: Set register address for KEY 1/2
 * KEY 1: Read from stored register to Red LEDs & HEX
-* KEY 2: Transmit fixed Ethernet packet
-* KEY 3: Reset Ethernet PHY (only)
+* KEY 2: Transmit fixed Ethernet packet (at SV-defined fixed speed)
+* KEY 3: Reset Ethernet Management & PHY (only, for now)
 * HEX 7-6: Stored MDIO Management Interface register (from key 0)
 * HEX 5-0: Receiver counts
   * 5-4: Count of received frames ended by a "carrier" message (i.e., RXDV 0, RXERR 1)
   * 3-0: The 16 bits read from the most recent receive FIFO:
     crc error, frame error, 3 bits of buffer number, 11 bits of length
 * LCD: Displays 32 characters of received packet data as ASCII starting 
-  after Ethernet frame header (i.e., after 2x MAC & EtherType)
+  after Ethernet frame header (i.e., after 2x MAC & EtherType, preamble and SFD)
+  * (This can be off if the PHY omits some preamble nibbles/bytes)
 
 
 ## Open Questions
