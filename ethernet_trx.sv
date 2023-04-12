@@ -203,6 +203,15 @@ module ethernet_trx_88e1111 #(
 //////////////////////////////////////////////////////////////////////////////////////////
 // Management interface
 
+// Marvell 88E1111 section 4.10.2 (Rev. M) says the MII setup time
+// for 10 Mbps is 10ns, and hold time is zero. Same for 100.
+// For 1000, section 4.12.2.1 says setup time is 1ns and hold is 0.8ns.
+//
+// At startup, Register 20.1 is 0 (no delay for TXD outputs)
+// and Register 20.7 is 0 (no added delay for RX_CLK).
+// Our Controller resets those to 1, to allow us to receive data
+// and send data synchronously with the received and transmitted clocks.
+
 eth_phy_88e1111_controller #(
   .CLK_DIV(MII_CLK_DIV),
   .PHY_MII_ADDRESS(MII_PHY_ADDRESS)
@@ -334,6 +343,7 @@ rgmii_tx ethernet_tx (
   // Debug ports
   .crc_out(tx_crc_out)
 );
+
 
 
 

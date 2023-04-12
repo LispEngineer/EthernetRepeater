@@ -390,6 +390,12 @@ always_ff @(posedge clk_rx) begin
     // FIXME: CODE ME: Reset all counters, etc.
     state <= S_IDLE;
 
+    // Should we clear the FIFO? 
+    fifo_aclr <= '0;
+
+    ram_wr_ena <= '0;
+    fifo_wr_req <= '0;
+
   end else begin
 
     case (state)
@@ -398,9 +404,11 @@ always_ff @(posedge clk_rx) begin
 
       last_rx_dv <= rx_dv;
       last_rx_err <= rx_err;
-      byte_pos <= '0;
-      in_receive <= '0;
-      fifo_wr_req <= '0;
+      byte_pos <= '0; // Prepare for next packet to be received
+      in_receive <= '0; // We are not receiving a packet
+      fifo_wr_req <= '0; // We just wrote to the FIFO probably
+      fifo_aclr <= '0; // In case we cleared it in a reset
+      ram_wr_ena <= '0; // Should already be zero, not writing to RAM usually
 
       // See Table 4 in section 3.4 of RGMII Spec 2.0
       // See Marvell 88E1111 Rev M section 2.2.3.2 which implies support for in-band

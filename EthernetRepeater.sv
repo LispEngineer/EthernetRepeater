@@ -449,8 +449,10 @@ seven_segment hex6 (.num(hex_display[27:24]), .hex(ihex6));
 seven_segment hex7 (.num(hex_display[31:28]), .hex(ihex7));
 
 ///////////////////////////////////////////////////////////////////////////////
-// Use Ethernet Management Interface
+// Ethernet Management Interface
 // Read the output of register 0 after 3 seconds
+
+localparam ENET1_PHY_ADDRESS = 5'b1_0001; // 10000 for ENET0, 10001 for ENET1
 
 // The internal wires for Management Interface
 logic mdc, mdio_i, mdio_o, mdio_e;
@@ -461,19 +463,12 @@ logic mi_busy, mi_success;
 // Should we do the activate thing
 logic mi_activate = '0;
 
-// Register IDs
-localparam R_CONTROL  = 5'd0,
-           R_STATUS   = 5'd1,
-           R_PHY_ID_1 = 5'd2,
-           R_PHY_ID_2 = 5'd3;
-
 // What should we activate?
 logic        mi_read = '1;
-localparam ENET1_PHY_ADDRESS = 5'b1_0001; // 10000 for ENET0, 10001 for ENET1
-logic  [4:0] mi_phy_address = ENET1_PHY_ADDRESS;
-logic  [4:0] mi_register = R_STATUS;
+logic  [4:0] mi_register = '0;
 logic [15:0] mi_data_in = '0;
 logic [15:0] mi_data_out = '0;
+logic enet1_reset;
 
 //////////////
 
@@ -487,60 +482,9 @@ ALTIOBUF ALTIOBUF_mdio ( // OPEN DRAIN!!!
 	.dataout (mdio_i)
 );
 
-// Tie everything to ETH1 and our display
-always_comb begin
-  ENET1_MDC = mdc;
-  // ENET1_MDIO = mdio;
+// What's the difference between always and assign?
 
-  // Show the results
-  LEDR[15:0] = mi_data_in;
-  /*
-  LEDG[0] = mi_busy;
-  LEDG[1] = mi_success;
-  LEDG[2] = mi_activate;
-  LEDG[3] = mdc;
-  */
-end
-
-///////////////
-
-// Ideally we canuse our MII Management Interface and our ETH PHY 88E1111 Controller
-// in an identical manner as the controller willact as an MII Management Interface
-// passthrough when it's not busy
-
-`ifdef USE_MII_MANAGEMENT_INTERFACE
-// Instantiate one MII Management Interface
-mii_management_interface #(
-  // Leave all parameters at default, usually
-  .CLK_DIV()
-) mii_management_interface1 (
-  // Controller clock & reset
-  .clk(CLOCK_50),
-  .reset('0),
-
-  // External management bus connections
-  .mdc(mdc),
-  .mdio_e(mdio_e), .mdio_i(mdio_i), .mdio_o(mdio_o),
-
-  // Status
-  .busy(mi_busy),
-  .success(mi_success),
-
-  // Management interface inputs
-  .activate   (mi_activate),
-  .read       (mi_read),
-  .phy_address(mi_phy_address),
-  .register   (mi_register),
-  .data_out   (mi_data_out),
-  .data_in    (mi_data_in)
-);
-
-assign ENET1_RST_N = KEY[3]; // Take chip out of reset (with logical 1)
-
-
-`else // We will use our 88E1111 controller
-
-logic enet1_reset;
+assign ENET1_MDC = mdc;
 assign ENET1_RST_N = ~enet1_reset;
 
 logic ep1_config_error;
@@ -556,61 +500,9 @@ logic [15:0] ep1_soft_reset_checks;
 assign LEDG[6] = ep1_configured;
 // assign hex_display[23:16] = ep1_soft_reset_checks; // ep1_reg20[7:0]; // Expect E2 in reg20
 // assign LEDR[15:0] = ep1_seen_states;
+// Show the results from an MII read
+always LEDR[15:0] = mi_data_in;
 
-eth_phy_88e1111_controller #(
-  // Leave all parameters at default, usually
-  .PHY_MII_ADDRESS(ENET1_PHY_ADDRESS)
-) eth_phy_88e1111_controller (
-  // Controller clock & reset
-  .clk(CLOCK_50),
-  .reset(~KEY[3]),
-
-  // External management bus connections
-  .mdc(mdc),
-  .mdio_e(mdio_e), .mdio_i(mdio_i), .mdio_o(mdio_o),
-  .phy_reset(enet1_reset),
-
-  // Status
-  .busy(mi_busy),
-  .success(mi_success),
-
-  // Management interface passthrough:
-  // This adds 1 cycle latency on all requests to MII
-  .mii_activate(mi_activate),
-  .mii_read    (mi_read),
-  .mii_register(mi_register),
-  .mii_data_out(mi_data_out), // Data being written
-  .mii_data_in (mi_data_in),  // Data being read
-
-  // Status outputs
-  .configured(ep1_configured),
-  .config_error(ep1_config_error),
-
-  // Debugging outputs
-  .d_state(ep1_state),
-  .d_reg0(ep1_reg0),
-  .d_reg20(ep1_reg20),
-  .d_seen_states(ep1_seen_states),
-  .d_soft_reset_checks(ep1_soft_reset_checks)
-);
-
-`endif
-
-
-/*
-* Manual management interface
-  * Store the register # from the switches SW4-0 (Key 0)
-  * Read the stored register (Key 1)
-    * Show it on LEDR15-0
-  * Write switches SW15-0 to the stored register (Key 2)
-    * Show current switch 15-0 settings always on HEX3-0
-    * (Show SW4-0 on HEX7-6) (Huh? Why?)
-  * Hardware reset (Key 3)
-
-  Implemented:
-  * Show stored register in Hex 7-6
-  * Show received register data on Hex 3-0
-*/
 
 // BUTTON 0 ////////////////////////////////////////
 
@@ -652,7 +544,8 @@ always_ff @(posedge CLOCK_50) begin
     mi_read <= '1;
     // mi_register is already set
   end 
-`ifndef ENABLE_ETHERNET_TRANSMITTER // This uses KEY[2] too
+/*  
+  // This uses KEY[2] too to write data from the switches
   else if (!mi_busy && !mi_activate && !KEY[2] && KEY[2] != last_key[2]) begin
     // Activate a write
     mi_activate <= '1;
@@ -660,77 +553,26 @@ always_ff @(posedge CLOCK_50) begin
     mi_data_out <= SW[15:0];
     // mi_register is already set
   end
-`endif // ENABLE_ETHERNET_TRANSMITTER
+*/
 
 end // MDIO Button Handler
 
 
 
-`ifdef OLD_MDIO_INTERFACE
-// Read and display status when a button is pushed, for the specified
-// register from switches 4:0.
-
-always_ff @(posedge CLOCK_50) begin
-  last_key <= KEY;
-  last_mi_busy <= mi_busy;
-
-  // TODO: Handle reset
-
-  if (!mi_busy && last_mi_busy) begin
-    // We need to handle the completion of a command
-    // Nothing really to do
-
-  end else if (mi_busy && mi_activate) begin
-    // Command just started
-    mi_activate <= '0;
-  end else if (mi_busy) begin
-    // The MI is busy, so track that it became busy
-  end else if (mi_activate) begin
-    // Do nothing
-  end else if (!mi_busy && !mi_activate && !KEY[0] && KEY[0] != last_key[0]) begin
-    // We're not busy, not awaiting activation, and the key was just pressed
-    // (remember key down reports logic 0)
-    mi_activate <= '1;
-    mi_register <= SW[4:0];
-  end
-
-end
-`endif
-
-
-
 // ETHERNET TRANSMITTER TOP LEVEL /////////////////////////////////////////////
-
-// Let's generate our own 2.5MHz 10BASE-T clock
-// with two outputs: one 12ns shifted and one 90⁰ phase shifted.
-// Marvell 88E1111 section 4.10.2 (Rev. M) says the MII setup time
-// for 10 Mbps is 10ns, and hold time is zero. Same for 100.
-// For 1000, section 4.12.2.1 says setup time is 1ns and hold is 0.8ns.
-//
-// At startup, Register 20.1 is 0 (no delay for TXD outputs)
-// and Register 20.7 is 0 (no added delay for RX_CLK).
-// Our Controller resets those to 1, to allow us to receive data
-// and send data synchronously with the received and transmitted clocks.
-
-`define ENABLE_ETHERNET_TRANSMITTER
-`ifdef ENABLE_ETHERNET_TRANSMITTER
 
 logic clock_eth_tx, clock_eth_tx_lock;
 logic clk_eth_125, clk_eth_25, clk_eth_2p5;
 
-`define SPEED_100
-`ifdef SPEED_1000
-assign clock_eth_tx = clk_eth_125;
-`define USE_DDR 1'b1
+logic [3:0] tx_data_h, tx_data_l;
+logic tx_ctl_h, tx_ctl_l;
+logic gtx_clk;
+logic send_activate = '0;
+logic send_busy;
 
-`elsif SPEED_100
-assign clock_eth_tx = clk_eth_25;
-`define USE_DDR 1'b0
-
-`elsif SPEED_10
-assign clock_eth_tx = clk_eth_2p5;
-`define USE_DDR 1'b0
-`endif
+assign ENET1_TX_ER = '0; // Not used in RGMII
+assign ENET1_GTX_CLK = gtx_clk;
+assign LEDG[7] = clock_eth_tx_lock; // pll_locked;
 
 pll_50_to_all_eth_single_input	pll_50_to_all_eth_single_input_inst (
 	.inclk0 ( CLOCK_50 ),
@@ -740,38 +582,6 @@ pll_50_to_all_eth_single_input	pll_50_to_all_eth_single_input_inst (
 	.locked (clock_eth_tx_lock),
 	.areset ( '0 ) // FIXME: Add PLL reset
 );
-
-logic [3:0] tx_data_h, tx_data_l;
-logic tx_ctl_h, tx_ctl_l;
-logic gtx_clk;
-logic send_activate = '0;
-logic send_busy;
-
-// This will only work with 10BASE-T now, since the
-// clock speed doesn't change to adjust with the ENET1_RX_CLK.
-rgmii_tx rgmii_tx1 (
-  .tx_clk(clock_eth_tx),
-  .reset('0),
-  .ddr_tx(`USE_DDR), // 0 for 10/100, 1 for 1000
-
-  .activate(send_activate),
-  .busy(send_busy),
-
-  .gtx_clk(gtx_clk), // Should be the same as tx_clk input above
-  .tx_data_h(tx_data_h),
-  .tx_data_l(tx_data_l),
-  .tx_ctl_h(tx_ctl_h),
-  .tx_ctl_l(tx_ctl_l),
-
-  // Debug ports
-  .crc_out()
-);
-
-assign ENET1_TX_ER = '0;
-// For 10/100 use a 12ns shifted clock. (10 would be better for 100)
-// For 1000, use 1 2ns shifted clock (90⁰ shift for 125 MHz)
-assign ENET1_GTX_CLK = clock_eth_tx;
-assign LEDG[7] = clock_eth_tx_lock; // pll_locked;
 
 // Set up our DDR output pins for RGMII transmit
 ddr_output_4 ddr_output4_rgmii1_tx_data (
@@ -818,15 +628,10 @@ always_ff @(posedge CLOCK_50) begin
 
 end
 
-`endif // ENABLE_ETHERNET_TRANSMITTER
-
 
 // ETHERNET RECEIVER TOP LEVEL ////////////////////////////////////////////////
 
-`define ENABLE_ETHERNET_RECEIVER
-`ifdef ENABLE_ETHERNET_RECEIVER
-
-// Wait at least 2s before using the LCD
+// Wait at least 2s before using the LCD for it to power up
 localparam LCD_POWER_ON_WAIT = 32'd100_000_000;
 logic [31:0] lcd_power_on = '0;
 logic lcd_available = '0;
@@ -843,10 +648,8 @@ always_ff @(posedge CLOCK_50) begin
   end // lcd_available
 end
 
-
-// 1. Instantiate the Ethernet Receiver
-// 2. Listening for FIFO not empty
-// 3. When it gets a FIFO entry, output the Ethernet packet payload to LCD
+// 1. Listen for RX FIFO not empty
+// 2. When it gets a FIFO entry, output the Ethernet packet payload to LCD
 //    (everything after the Ethernet header - 2x MAC & EtherType)
 
 // FIFO
@@ -874,6 +677,7 @@ logic [10:0] ram_read_pos; // 2k max packet size - 11 bits
 assign ram_rd_addr = {ram_read_buf, ram_read_pos};
 
 // We will skip reading the preamble, SFD, and Ethernet header
+// FIXME: Preamble length may vary, really, RX should not save it or SFD
 localparam RAM_READ_START = 11'd7 + 11'd1 + 11'd6 + 11'd6 + 11'd2;
 logic [10:0] ram_read_last; // Last ram_read_pos to process before ending
 
@@ -892,6 +696,7 @@ logic link_up, full_duplex, speed_10, speed_100, speed_1000;
 logic in_band_differ;
 logic [3:0] in_band_h;
 logic [3:0] in_band_l;
+// PHY RX counters
 logic [31:0] count_interframe;
 logic [31:0] count_reception;
 logic [31:0] count_receive_err;
@@ -932,52 +737,110 @@ ddr_input_4	ddr_input_4_inst (
 );
 
 
-rgmii_rx ethernet_rx (
-  .clk_rx(ENET1_RX_CLK), // Use CLOCK_50 if using BOGUS Ethernet Receiver
-  .reset('0), // FIXME: Implement
-  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing) - UNUSED
+/////////////////////////////////////////////////////////////
+// Ethernet RGMII PHY Interface - RX, TX, MII
 
-  // Inputs from PHY (after DDR conversion)
-  .rx_ctl_h(rx_ctl_h), // RX_DV
-  .rx_ctl_l(rx_ctl_l), // RX_ER XOR RX_DV
-  .rx_data_h(rx_data_h),
-  .rx_data_l(rx_data_l),
+ethernet_trx_88e1111 #(
+  // Leave most parameters at default
+  .MII_PHY_ADDRESS(ENET1_PHY_ADDRESS)
+) enet1_mac (
+  // Clocks //
+  .clk(CLOCK_50),
+  .clk_125(clk_eth_125),
+  .clk_25(clk_eth_25),
+  .clk_2p5(clk_eth_2p5),
+  .reset(~KEY[3]),
 
-  // Status & Debugging outputs
-  .link_up(link_up),
-  .full_duplex(full_duplex),
-  .speed_1000(speed_1000),
-  .speed_100(speed_100),
-  .speed_10(speed_10),
+  // Receiver //
 
-  .in_band_differ(in_band_differ),
-  .in_band_h(in_band_h),
-  .in_band_l(in_band_l),
+  // PHY signals
+  .clk_rx(ENET1_RX_CLK),
+  .rx_ctl_h,
+  .rx_ctl_l,
+  .rx_data_h,
+  .rx_data_l,
 
-  // Debugging counters
-  .count_interframe(count_interframe),
-  .count_reception(count_reception),
-  .count_receive_err(count_receive_err),
-  .count_carrier(count_carrier),
-  .count_interframe_differ(count_interframe_differ),
+  // link status
+  .link_up,
+  .full_duplex,
+  .speed_1000,
+  .speed_100,
+  .speed_10,
 
-  .count_rcv_end_normal(count_rcv_end_normal),
-  .count_rcv_end_carrier(count_rcv_end_carrier),
-  .count_rcv_errors(count_rcv_errors),
-  .count_rcv_dropped_packets(count_rcv_dropped_packets),
+  // Debugging
+  .in_band_differ,
+  .in_band_h,
+  .in_band_l,
 
-  // RAM read interface
-  .clk_ram_rd(CLOCK_50),
-  .ram_rd_ena(ram_rd_ena), // Read enable
-  .ram_rd_addr(ram_rd_addr), // Read address
-  .ram_rd_data(ram_rd_data), // Read data output
+  // RX counters
+  .count_interframe,
+  .count_reception,
+  .count_receive_err,
+  .count_carrier,
+  .count_interframe_differ,
+  .count_rcv_end_normal,
+  .count_rcv_end_carrier,
+  .count_rcv_errors,
+  .count_rcv_dropped_packets,
 
-  // FIFO read interface
-  .clk_fifo_rd(CLOCK_50), // Usually same as clk_ram_rd
-  .fifo_rd_empty(fifo_rd_empty),
-  .fifo_rd_req(fifo_rd_req),
-  .fifo_rd_data(fifo_rd_data)
+  // RX packet buffer
+  .clk_rx_ram_rd(CLOCK_50),
+  .rx_ram_rd_ena(ram_rd_ena),
+  .rx_ram_rd_addr(ram_rd_addr),
+  .rx_ram_rd_data(ram_rd_data),
+
+  // RX FIFO
+  .clk_rx_fifo_rd(CLOCK_50),
+  .rx_fifo_rd_empty(fifo_rd_empty),
+  .rx_fifo_rd_req(fifo_rd_req),
+  .rx_fifo_rd_data(fifo_rd_data),
+
+  // Transmitter
+
+  // TX PHY signals (DDR)
+  .clk_gtx(gtx_clk), // Will be one of the 3 clocks above
+  .tx_data_h,
+  .tx_data_l,
+  .tx_ctl_h,
+  .tx_ctl_l,
+
+  // TX status
+  .tx_activate(send_activate),
+  .tx_busy(send_busy),
+
+  // TX debug signals
+  .tx_crc_out(), // NOT connected
+
+  // Management interface
+
+  // PHY control signals
+  .mdio_i,
+  .mdio_o,
+  .mdio_e,
+  .mdc,
+  .phy_reset(enet1_reset),
+
+  // Controller status
+  .mii_busy   (mi_busy),
+  .mii_success(mi_success),
+  .phy_configured  (ep1_configured),
+  .phy_config_error(ep1_config_error),
+
+  // Controller signals
+  .mii_activate(mi_activate),
+  .mii_read    (mi_read),
+  .mii_register(mi_register),
+  .mii_data_out(mi_data_out),
+  .mii_data_in (mi_data_in),
+
+  // MII Debug
+  .d_state(ep1_state),
+  .d_reg0(ep1_reg0),
+  .d_reg20(ep1_reg20),
+  .d_seen_states(ep1_seen_states),
+  .d_soft_reset_checks(ep1_soft_reset_checks)
 );
+
 
 // Instantiate our LCD and necessary signals
 logic char_activate = '0;
@@ -1201,121 +1064,6 @@ always_ff @(posedge CLOCK_50) begin
   end
 
 end
-
-`endif // ENABLE_ETHERNET_RECEIVER
-
-// LCD DRIVER TOP LEVEL ///////////////////////////////////////////////////////
-
-// `define ENABLE_LCD_DRIVER_TEST
-`ifdef ENABLE_LCD_DRIVER_TEST
-
-// Wait at least 20ms before using the LCD
-logic [31:0] lcd_power_on = '0;
-logic lcd_available = '0;
-
-logic [7:0] lcd_data_o, lcd_data_i;
-logic lcd_data_e;
-logic lcd_busy;
-
-// Wait 20ms before we enable our LCD
-always_ff @(posedge CLOCK_50) begin
-  if (!lcd_available) begin
-    if (lcd_power_on == 32'd100_000_000) begin // FIXME: Make localparam
-      lcd_available <= '1;
-    end else begin
-      lcd_power_on <= lcd_power_on + 1'd1;
-    end
-  end // lcd_available
-end
-
-// FIXME: We probably have to do a full manual initialization of
-// the LCD module before we can write characters.
-// We will have to write a driver that does the initialization,
-// then passes through the rest of the commands.
-
-logic lcd_activate = '0;
-logic char_activate = '0;
-logic [4:0] char_loc = '1; // Top bit = row 1 or 2, bottom = col
-
-lcd_module lcd_module (
-  .clk(CLOCK_50),
-  .reset('0),
-
-  // Interface to physical LCD module
-  .data_o(lcd_data_o),
-  .data_i(lcd_data_i),
-  .data_e(lcd_data_e),
-  .rs(LCD_RS),
-  .rw(LCD_RW),
-  .en(LCD_EN),
-
-  // Low level interface to this module
-  .busy(lcd_busy),
-  .activate(lcd_activate),
-  .is_data('1), // Send an H in
-  .data_inst(SW[17:10]), // Change the letter being sent
-  .delay('0), // Default delay
-
-  // Character interface
-  .char_activate(char_activate),
-  .move_row(char_loc[4]),
-  .move_col(char_loc[3:0])
-);
-
-assign LEDR[17] = lcd_busy;
-
-genvar i;
-generate
-  for (i = 0; i < 8; i = i + 1) begin: lcd_output_generator
-    ALTIOBUF_LCD ALTIOBUF_lcd_i (
-      .dataio  (LCD_DATA[i]),
-      .oe      (lcd_data_e),
-      .datain  (lcd_data_o[i]),
-      .dataout (lcd_data_i[i])
-    );
-  end
-endgenerate
-
-logic last_lcd_busy = '0;
-logic [3:0] last_key_lcd = '0;
-
-// Prove we can send data to the module one letter at a time.
-always_ff @(posedge CLOCK_50) begin
-  last_key_lcd <= KEY;
-  last_lcd_busy <= lcd_busy;
-
-  // TODO: Handle reset
-
-  if (!lcd_busy && last_lcd_busy) begin
-    // We need to handle the completion of an activation.
-    // Nothing really to do
-
-  end else if (lcd_busy && (lcd_activate || char_activate)) begin
-    // Command just started
-    lcd_activate <= '0;
-    char_activate <= '0;
-  end else if (lcd_busy) begin
-    // The LCD module is busy, nothing to do
-  end else if (lcd_activate) begin
-    // Do nothing
-  end else if (!lcd_busy && !char_activate && !KEY[2] && KEY[2] != last_key_lcd[2]) begin
-    // We're not busy, not awaiting activation, and the key was just pressed
-    // (remember key down reports logic 0)
-    char_activate <= '1;
-    char_loc <= char_loc + 1'd1;
-  end
-end // Activate LCD module
-// TODO: Make the above a module with inputs:
-//   activate request (the key) - only activated from 0 to 1 edge
-//   busy status
-// Outputs:
-//   actual activate
-//   and its deactivation
-// Parameters:
-//   activate only if not busy currently
-//     or activate when not busy
-
-`endif // ENABLE_LCD_DRIVER_TEST
 
 
 // LED BLINKER TOP LEVEL //////////////////////////////////////////////////////

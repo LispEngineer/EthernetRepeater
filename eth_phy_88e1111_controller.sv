@@ -51,6 +51,7 @@ module eth_phy_88e1111_controller #(
   output logic [15:0] mii_data_in,     // Data read when read
 
   // Outputs from our PHY
+  // FIXME: Code these and output from the controller
   output logic speed_10,
   output logic speed_100,
   output logic speed_1000,
