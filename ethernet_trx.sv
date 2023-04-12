@@ -53,6 +53,9 @@ module ethernet_trx_88e1111 #(
   // RX_DV is encoded on the rising edge of RX_CLK, 
   // RX_ER XORed with RX_DV is encoded on the falling edge.
 
+  // Our receive clock from PHY
+  input  logic clk_rx,
+
   // DDR RX_CTL signal (on RX_DV Marvell pin)
   input  logic        rx_ctl_h, // RX_DV
   input  logic        rx_ctl_l, // RX_ER XOR RX_DV
@@ -235,6 +238,56 @@ eth_phy_88e1111_controller #(
   .d_reg20            (d_reg20),
   .d_seen_states      (d_seen_states),
   .d_soft_reset_checks(d_soft_reset_checks)
+);
+
+////////////////////////////////////////////////////////////////////////////
+// RX Interface
+
+rgmii_rx ethernet_rx (
+  .clk_rx(clk_rx), // Use CLOCK_50 if using BOGUS Ethernet Receiver
+  .reset (reset), // FIXME: Implement reset sequencer
+  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing) - UNUSED
+
+  // Inputs from PHY (after DDR conversion)
+  .rx_ctl_h (rx_ctl_h), // RX_DV
+  .rx_ctl_l (rx_ctl_l), // RX_ER XOR RX_DV
+  .rx_data_h(rx_data_h),
+  .rx_data_l(rx_data_l),
+
+  // Status & Debugging outputs
+  .link_up    (link_up),
+  .full_duplex(full_duplex),
+  .speed_1000 (speed_1000),
+  .speed_100  (speed_100),
+  .speed_10   (speed_10),
+
+  .in_band_differ(in_band_differ),
+  .in_band_h     (in_band_h),
+  .in_band_l     (in_band_l),
+
+  // Debugging counters
+  .count_interframe       (count_interframe),
+  .count_reception        (count_reception),
+  .count_receive_err      (count_receive_err),
+  .count_carrier          (count_carrier),
+  .count_interframe_differ(count_interframe_differ),
+
+  .count_rcv_end_normal     (count_rcv_end_normal),
+  .count_rcv_end_carrier    (count_rcv_end_carrier),
+  .count_rcv_errors         (count_rcv_errors),
+  .count_rcv_dropped_packets(count_rcv_dropped_packets),
+
+  // RAM read interface
+  .clk_ram_rd (clk_rx_ram_rd),
+  .ram_rd_ena (rx_ram_rd_ena), // Read enable
+  .ram_rd_addr(rx_ram_rd_addr), // Read address
+  .ram_rd_data(rx_ram_rd_data), // Read data output
+
+  // FIFO read interface
+  .clk_fifo_rd  (clk_rx_fifo_rd), // Usually same as clk_ram_rd
+  .fifo_rd_empty(rx_fifo_rd_empty),
+  .fifo_rd_req  (rx_fifo_rd_req),
+  .fifo_rd_data (rx_fifo_rd_data)
 );
 
 
