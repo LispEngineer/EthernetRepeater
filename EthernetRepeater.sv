@@ -10,7 +10,7 @@
 `endif
 
 
-module EthernetRepeater(
+module EthernetRepeater (
 
   //////////// CLOCK //////////
   input  logic        CLOCK_50,
