@@ -126,7 +126,7 @@ module ethernet_trx_88e1111 #(
 
   // RGMII TX PHY OUTPUTS ///////////////////////
   // Our generated appropriate speed clock output
-  output logic gtx_clk,
+  output logic clk_gtx,
   // The data outputs in DDR mode:
   // Send H while the clock is high [3:0]
   // Send L while the clock is low [7:4]
@@ -240,6 +240,10 @@ eth_phy_88e1111_controller #(
   .d_soft_reset_checks(d_soft_reset_checks)
 );
 
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////
 // RX Interface
 
@@ -288,6 +292,47 @@ rgmii_rx ethernet_rx (
   .fifo_rd_empty(rx_fifo_rd_empty),
   .fifo_rd_req  (rx_fifo_rd_req),
   .fifo_rd_data (rx_fifo_rd_data)
+);
+
+
+
+
+////////////////////////////////////////////////////////////////////////////
+// TX Interface
+
+// FIXME: Until we define the TX clock multplexer
+logic clock_eth_tx;
+
+`define SPEED_100
+`ifdef SPEED_1000
+assign clock_eth_tx = clk_125;
+`define USE_DDR 1'b1
+
+`elsif SPEED_100
+assign clock_eth_tx = clk_25;
+`define USE_DDR 1'b0
+
+`elsif SPEED_10
+assign clock_eth_tx = clk_2p5;
+`define USE_DDR 1'b0
+`endif
+
+rgmii_tx ethernet_tx (
+  .tx_clk(clock_eth_tx),
+  .reset(reset), // FIXME: Until we define reset cascade
+  .ddr_tx(`USE_DDR), // 0 for 10/100, 1 for 1000
+
+  .activate(tx_activate),
+  .busy(tx_busy),
+
+  .gtx_clk(clk_gtx), // Should be the same as tx_clk input above
+  .tx_data_h(tx_data_h),
+  .tx_data_l(tx_data_l),
+  .tx_ctl_h(tx_ctl_h),
+  .tx_ctl_l(tx_ctl_l),
+
+  // Debug ports
+  .crc_out(tx_crc_out)
 );
 
 
