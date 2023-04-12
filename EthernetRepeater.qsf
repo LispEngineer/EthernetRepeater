@@ -1297,6 +1297,10 @@ set_global_assignment -name EDA_TEST_BENCH_FILE rgmii_rx_impl.sv -section_id rgm
 set_global_assignment -name EDA_TEST_BENCH_FILE rx_fifo.v -section_id rgmii_rx
 set_global_assignment -name EDA_TEST_BENCH_FILE rx_ram_buffer.v -section_id rgmii_rx
 set_global_assignment -name EDA_TEST_BENCH_FILE rx_ram_buffer_fast.v -section_id rgmii_rx
+set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
+set_global_assignment -name SYSTEMVERILOG_FILE ethernet_trx.sv
 set_global_assignment -name SYSTEMVERILOG_FILE eth_phy_88e1111_controller.sv
 set_global_assignment -name SYSTEMVERILOG_FILE seven_segment.sv
 set_global_assignment -name SYSTEMVERILOG_FILE test_rgmii_rx.sv
@@ -1326,9 +1330,6 @@ set_global_assignment -name QIP_FILE rx_fifo.qip
 set_global_assignment -name QIP_FILE rx_ram_buffer_fast.qip
 set_global_assignment -name QIP_FILE pll_50_to_all_eth.qip
 set_global_assignment -name QIP_FILE pll_50_to_all_eth_single_input.qip
-set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
-set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
-set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
 set_global_assignment -name QIP_FILE ddr_input_4.qip
 set_global_assignment -name QIP_FILE ddr_input_1.qip
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

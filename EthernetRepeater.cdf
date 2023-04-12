@@ -4,7 +4,7 @@ JedecChain;
 	DefaultMfr(6E);
 
 	P ActionCode(Cfg)
-		Device PartName(EP4CE115F29) Path("D:/Doug/src/FPGA/DE2_115_EthernetRepeater/") File("EthernetRepeater.sof") MfrSpec(OpMask(1));
+		Device PartName(EP4CE115F29) Path("C:/Users/dfields/src/FPGA/D2-115_EthernetRepeater/") File("EthernetRepeater.sof") MfrSpec(OpMask(1));
 
 ChainEnd;
 

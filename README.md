@@ -241,6 +241,8 @@ added by HSMC card. Some useful features:
 * If we get RX_ERR (RX_ER, RXERR) with RX_DV, what do we do with the data in that byte/nibble?
   * For now, I am just ignoring it (not adding it to receive buffer)
 
+* Is there a standard, fault tolerant "in use" system so we can allocate buffers, use them,
+  and release them in a safe fashion?
 
 ## Known Bugs
 
