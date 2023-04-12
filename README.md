@@ -258,8 +258,8 @@ added by HSMC card. Some useful features:
 
   * So it seems the low nibble is CORRECT and the high nibble wrong in the 1000 receiver. 
     Low nibble is the data sampled at the high edge of the RX clock, and high nibble is
-    sampled at the low edge of the RX clock (see RGMII 2.0 Spec section 3, Table 1, on the
-    "RD" signal: "In RGMII mode, bits 3:0 on ↑ of RXC, bits 7:4 on ↓ of RXC"
+    sampled at the low edge of the RX clock. See RGMII 2.0 Spec section 3, Table 1, on the
+    "RD" signal: "In RGMII mode, bits 3:0 on ↑ of RXC, bits 7:4 on ↓ of RXC".
     * So it seems it's a DDR sample timing error!
 
 * Timing analyzer does not like the CRC generator running at 125MHz; compiling gives a Critical Warning
@@ -281,6 +281,7 @@ added by HSMC card. Some useful features:
 * ETH0 is dead: On my DE2-115, enabling the Ethernet (RST_N to 1) on both ports
   causes ETH0 to be unreponsive when plugged in, but ETH1 reponds
   just fine and lights up 1000, DUP, RX lights.
+  * I have since purchased a second DE2-115 that seems to have two working ETH ports.
 
 
 # Notes on FPGA Resources / Megafunctions / Hard IP
