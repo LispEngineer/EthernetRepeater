@@ -15,9 +15,47 @@ create_clock -name ENETCLK_25 -period 20.000ns [get_ports ENETCLK_25]
 
 # This is our Ethernet Receive clock, which can vary between
 # 2.5, 25 and 125 MHz, and comes in glitch-free from the PHY (in theory)
-create_clock -name ENET1_RX_CLK_1000 -period   8.000ns [get_ports ENET1_RX_CLK]
-create_clock -name ENET1_RX_CLK_100  -period  40.000ns [get_ports ENET1_RX_CLK] -add
-create_clock -name ENET1_RX_CLK_10   -period 400.000ns [get_ports ENET1_RX_CLK] -add
+#
+# See: AN 433: Constraining and Analyzing Source-Synchronous Interfaces
+# https://cdrdv2-public.intel.com/653688/an433.pdf
+
+# First, the 1000 speed
+# (See AN433 example 37, direct clocked with center-aligned data)
+create_clock -name virtual_ENET1_RX_CLK_1000 -period 8.000ns 
+create_clock -name ENET1_RX_CLK_1000 -period 8.000ns [get_ports ENET1_RX_CLK] \
+  -waveform { 2.000 6.000 }
+
+# We also can receive at 10/100 speeds
+# FIXME: Figure out how to do completely separate timing closure analysis at each
+# of these speeds?
+# If I leave them in, it gives me timing errors:
+# Critical Warning (332148): Timing requirements not met
+# 	Info (11105): For recommendations on closing timing, run Report Timing Closure Recommendations in the Timing Analyzer.
+#create_clock -name ENET1_RX_CLK_100  -period  40.000ns [get_ports ENET1_RX_CLK] -add
+#create_clock -name ENET1_RX_CLK_10   -period 400.000ns [get_ports ENET1_RX_CLK] -add
+
+# Deal with the DDR on receive
+# We will do "FPGA-Centric Input Delay Constraints."
+# Marvell 88E1111 Datasheet Section 4.12.2.3-4
+# Register 20.7 = 0 (we do not use this, source synchronous)
+# t_skew = -0.5ns to 0.5ns
+# Register 20.7 = 1 (we use this, centered clock at FPGA)
+# t_setup = 1.2 ns (4.00 - 1.2 = 2.8)
+# t_hold = 1.2 ns
+# Unit interval  time: 8.000ns, but for DDR it's half that, or 4.000ns
+set_input_delay -max 2.800ns \
+  -clock [get_clocks ENET1_RX_CLK_1000] \
+  -add_delay [get_ports ENET1_RX_DATA*]
+set_input_delay -min 1.200ns \
+  -clock [get_clocks ENET1_RX_CLK_1000] \
+  -add_delay [get_ports ENET1_RX_DATA*]
+# 4 data & 1 control lines
+set_input_delay -max 2.800ns \
+  -clock [get_clocks ENET1_RX_CLK_1000] \
+  -add_delay [get_ports ENET1_RX_DV]
+set_input_delay -min 1.200ns \
+  -clock [get_clocks ENET1_RX_CLK_1000] \
+  -add_delay [get_ports ENET1_RX_DV]
 
 # TODO: Figure out how to make DDR read timing work at 125MHz on ENET1_RX_DATA
 
