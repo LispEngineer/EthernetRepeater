@@ -135,6 +135,9 @@ added by HSMC card. Some useful features:
   * Handle all 3 speeds: 1000 does not currently work
   * Check frame CRC
   * Handle non-nibble/byte aligned receives (if necessary? and see below)
+    * Once we see the SFD (`0xD5`) we should jump to the payload, even if it
+      is less than the 8th byte. This way received data is always at 8.
+    * Proper fix: do not save preamble bytes at all :)
   * Expand RAM size:
     * Allow reads 32 or 64 bits at a time, but still write 1 byte at a time with byte selects
     * Same, but write a word at a time
@@ -252,6 +255,14 @@ added by HSMC card. Some useful features:
 
 * Packets received at 1000 are one byte short - probably missing a
   preamble byte.
+  * 88E1111 datasheet mentions `dribble bits` and says `nibbles on MII are aligned to start
+    of frame delimiter and dribble bits are truncated`.
+    * "Dribble bits are extra bits of data that were received after the Ethernet CRC."
+      [Discussion](https://groups.google.com/g/comp.dcom.lans.ethernet/c/ywqOT9aUnJY).
+  * 88E1111 datasheet sections 4.14.12-14 show RGMII Receive Latency Timing
+  * [Intel's Triple-Speed Ethernet](https://www.intel.com/content/www/us/en/docs/programmable/683402/22-4-21-1-0/preamble-processing.html)
+    preamble processing looks for SFD within 7 bytes. (It also allows IPG of 8/6 bytes in 1000 or 100/10,
+    below the 96 bit times in the spec.)
 
 * Timing analyzer does not like the CRC generator running at 125MHz; compiling gives a Critical Warning
   * Open Timing Analyzer -> Tasks -> Reports -> Custom Reports -> Report Timing Closure Recommendations and use 20,000 paths
@@ -601,6 +612,8 @@ Docs:
 
 * Ethernet Errors
   * [TX_ER Question](https://electronics.stackexchange.com/questions/261123/gmii-rgmii-tx-er-signal-guaranteed-functionality)
+
+* Packet Generator - section 2.21 (uses 12 bytes of IPG, 8 bytes of preamble)
 
 
 Linux to keep FCS & bad CRCs
