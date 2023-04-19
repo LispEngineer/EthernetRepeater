@@ -137,7 +137,11 @@ added by HSMC card. Some useful features:
   * Handle non-nibble/byte aligned receives (if necessary? and see below)
     * Once we see the SFD (`0xD5`) we should jump to the payload, even if it
       is less than the 8th byte. This way received data is always at 8.
-    * Proper fix: do not save preamble bytes at all :)
+    * "Clause 22.2.3.2.2 shows all that is required is that the SFD is received fully and it 
+      is correctly aligned at the MII pins. No preamble preceding SFD needs to be conveyed 
+      through the MII."
+      [Source](https://ez.analog.com/industrial-ethernet/physical-layer-devices/f/q-a/558604/adin1300-10base-t-runt-preamble?ReplySortBy=CreatedDate&ReplySortOrder=Ascending)
+      and of course see the 802.3-2022 spec itself.
   * Expand RAM size:
     * Allow reads 32 or 64 bits at a time, but still write 1 byte at a time with byte selects
     * Same, but write a word at a time
