@@ -258,11 +258,23 @@ added by HSMC card. Some useful features:
         I`$Oewa !"#$%&'"   xx 49 60 24 4F 65 77 61 20 21 22 23 24 25 26 27 .. 22
         Iu`   ()*+,-./ 2   22 49 75 60 20 20 20 28 29 2A 2B 2C 2D 2E 2F 20 32
 
+        69 20 44 6F 75 67 21 20 21 22 23 24 25 26 27
+        49 60 24 4F 65 77 61 20 21 22 23 24 25 26 27
+        ... Shift the top nibble over one ...
+        69 20 44 6F 75 67 21 20 21 22 23 24 25
+
   * So it seems the low nibble is CORRECT and the high nibble wrong in the 1000 receiver. 
     Low nibble is the data sampled at the high edge of the RX clock, and high nibble is
     sampled at the low edge of the RX clock. See RGMII 2.0 Spec section 3, Table 1, on the
     "RD" signal: "In RGMII mode, bits 3:0 on ↑ of RXC, bits 7:4 on ↓ of RXC".
     * So it seems it's a DDR sample timing error!
+  * The top nibble is coming one cycle late?
+  * It seems like it is NOT a timing error, but rather related to WHEN we get the data.
+    If we do `always_ff @(posedge clk)` then the negative side will be from the previous
+    byte, because the new corresponding `negedge` hasn't yet come in and gotten latched
+    into the input buffer. So, how do we deal with that? We need a re-framer on the
+    DDR inputs, something that delays the current high (least significant nibble/bit in Ethernet)
+    a cycle and combines with the previous low. Or something...
 
 * Timing analyzer does not like the CRC generator running at 125MHz; compiling gives a Critical Warning
   * Open Timing Analyzer -> Tasks -> Reports -> Custom Reports -> Report Timing Closure Recommendations and use 20,000 paths

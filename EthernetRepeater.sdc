@@ -22,8 +22,9 @@ create_clock -name ENETCLK_25 -period 20.000ns [get_ports ENETCLK_25]
 # First, the 1000 speed
 # (See AN433 example 37, direct clocked with center-aligned data)
 create_clock -name virtual_ENET1_RX_CLK_1000 -period 8.000ns 
-create_clock -name ENET1_RX_CLK_1000 -period 8.000ns [get_ports ENET1_RX_CLK] \
-  -waveform { 2.000 6.000 }
+create_clock -name ENET1_RX_CLK_1000 -period 8.000ns -waveform { 2.000 6.000 } [get_ports ENET1_RX_CLK]
+# Get this error:
+# Warning (332061): Virtual clock virtual_ENET1_RX_CLK_1000 is never referenced in any input or output delay assignment.
 
 # We also can receive at 10/100 speeds
 # FIXME: Figure out how to do completely separate timing closure analysis at each
@@ -43,6 +44,7 @@ create_clock -name ENET1_RX_CLK_1000 -period 8.000ns [get_ports ENET1_RX_CLK] \
 # t_setup = 1.2 ns (4.00 - 1.2 = 2.8)
 # t_hold = 1.2 ns
 # Unit interval  time: 8.000ns, but for DDR it's half that, or 4.000ns
+# Example 48
 set_input_delay -max 2.800ns \
   -clock [get_clocks ENET1_RX_CLK_1000] \
   -add_delay [get_ports ENET1_RX_DATA*]
@@ -56,6 +58,13 @@ set_input_delay -max 2.800ns \
 set_input_delay -min 1.200ns \
   -clock [get_clocks ENET1_RX_CLK_1000] \
   -add_delay [get_ports ENET1_RX_DV]
+
+# Same-Edge Capture Center-Aligned Input - example 52
+
+set_false_path -setup -fall_from [get_clocks virtual_ENET1_RX_CLK_1000] -rise_to [get_clocks ENET1_RX_CLK_1000]
+set_false_path -setup -rise_from [get_clocks virtual_ENET1_RX_CLK_1000] -fall_to [get_clocks ENET1_RX_CLK_1000]
+set_false_path -hold  -rise_from [get_clocks virtual_ENET1_RX_CLK_1000] -rise_to [get_clocks ENET1_RX_CLK_1000]
+set_false_path -hold  -fall_from [get_clocks virtual_ENET1_RX_CLK_1000] -fall_to [get_clocks ENET1_RX_CLK_1000]
 
 # TODO: Figure out how to make DDR read timing work at 125MHz on ENET1_RX_DATA
 
