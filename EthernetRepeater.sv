@@ -719,22 +719,39 @@ assign hex_display[23:16] = count_rcv_end_carrier[7:0]; // Getting a lot of thes
 assign hex_display[15:0] = stored_fifo_data;
 
 // DDR inputs
-logic rx_ctl_l, rx_ctl_h;
+// Each cycle, on the `inclock`, we get the
+// CURRENT value of the _h
+// PREVIOUS value of the _l
+// So if we want to get a full high/low cycle,
+// we need to use the previous value of _h, which
+// adds a single cycle of latency.
+logic rx_ctl_l, rx_ctl_h, rx_ctl_h_next;
 logic [3:0] rx_data_l;
 logic [3:0] rx_data_h;
+logic [3:0] rx_data_h_next;
 
 ddr_input_1	ddr_input_1_inst (
 	.inclock   (ENET1_RX_CLK),
 	.datain    (ENET1_RX_DV),
-	.dataout_h (rx_ctl_h),
+	.dataout_h (rx_ctl_h_next),
 	.dataout_l (rx_ctl_l)
 );
 ddr_input_4	ddr_input_4_inst (
 	.inclock   (ENET1_RX_CLK),
 	.datain    (ENET1_RX_DATA),
-	.dataout_h (rx_data_h),
+	.dataout_h (rx_data_h_next),
 	.dataout_l (rx_data_l)
 );
+
+// Align the _l with its original _h
+// See Cyclone IV Handbook, Volume 1, Chapter 7, Figure 7-7
+// on the DDR Input Register.
+// FIXME: Put this into its own ddr_input_aligned module with
+// the ALTDDIO_IN
+always_ff @(posedge ENET1_RX_CLK) begin: ddr_input_resynchronize
+  rx_data_h <= rx_data_h_next;
+  rx_ctl_h <= rx_ctl_h_next;
+end: ddr_input_resynchronize
 
 
 /////////////////////////////////////////////////////////////
