@@ -676,9 +676,9 @@ logic [2:0] ram_read_buf;
 logic [10:0] ram_read_pos; // 2k max packet size - 11 bits
 assign ram_rd_addr = {ram_read_buf, ram_read_pos};
 
-// We will skip reading the preamble, SFD, and Ethernet header
-// FIXME: Preamble length may vary, really, RX should not save it or SFD
-localparam RAM_READ_START = 11'd7 + 11'd1 + 11'd6 + 11'd6 + 11'd2;
+// We will skip reading the preamble, SFD, and Ethernet header.
+// NOTE: Revised operation does not save preamble/SFD in RAM.
+localparam RAM_READ_START = 11'd6 + 11'd6 + 11'd2; // 2x MAC, EtherType/Length
 logic [10:0] ram_read_last; // Last ram_read_pos to process before ending
 
 // Match this to the setting in rgmii_rx.sv: USE_REGISTERED_OUTPUT_RAM
@@ -719,15 +719,20 @@ assign hex_display[23:16] = count_rcv_end_carrier[7:0]; // Getting a lot of thes
 assign hex_display[15:0] = stored_fifo_data;
 
 // DDR inputs
+logic rx_ctl_l, rx_ctl_h;
+logic [3:0] rx_data_l;
+logic [3:0] rx_data_h;
+
+
+`ifdef USE_DDR_WITH_RESYNCHRONIZING
+
 // Each cycle, on the `inclock`, we get the
 // CURRENT value of the _h
 // PREVIOUS value of the _l
 // So if we want to get a full high/low cycle,
 // we need to use the previous value of _h, which
 // adds a single cycle of latency.
-logic rx_ctl_l, rx_ctl_h, rx_ctl_h_next;
-logic [3:0] rx_data_l;
-logic [3:0] rx_data_h;
+logic rx_ctl_h_next;
 logic [3:0] rx_data_h_next;
 
 ddr_input_1	ddr_input_1_inst (
@@ -752,6 +757,20 @@ always_ff @(posedge ENET1_RX_CLK) begin: ddr_input_resynchronize
   rx_data_h <= rx_data_h_next;
   rx_ctl_h <= rx_ctl_h_next;
 end: ddr_input_resynchronize
+
+`else // Don't use DDR with resynchronizing - use clock inversion
+
+// If we invert the clock, we can get the old high and new low
+// at the next high, and not have to do the trick with the
+// cycle delay, saving a cycle. Let's try that.
+ddr_input_5_inverted	ddr_input_5_inverted_inst (
+	.inclock   (ENET1_RX_CLK),
+	.datain    ({ENET1_RX_DV, ENET1_RX_DATA}),
+	.dataout_h ({rx_ctl_l, rx_data_l}),
+	.dataout_l ({rx_ctl_h, rx_data_h})
+);
+
+`endif // USE_DDR_WITH_RESYNCHRONIZING
 
 
 /////////////////////////////////////////////////////////////

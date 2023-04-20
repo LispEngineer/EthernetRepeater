@@ -322,8 +322,9 @@ end // Bogus State Machine
 // Real RGMII Receiver
 
 localparam S_IDLE = 4'd0,
-           S_RECEIVING = 4'd1,
-           S_FRAME_END = 4'd2;
+           S_PREAMBLE = 4'd1,
+           S_RECEIVING = 4'd2,
+           S_FRAME_END = 4'd3;
 
 logic [3:0] state = S_IDLE;
 
@@ -350,10 +351,17 @@ logic [7:0] cur_byte;
 logic nibble; // and current nibble being received (0 = low, 1 = high)
 // Any errors during the receive of the current packet?
 logic packet_rcv_err;
+logic packet_preamble_err;
 
 // If we have to repeat things a few times
 logic [3:0] local_count;
 localparam TRIES_FIFO_INSERT = 3'd3;
+
+// Our Start of Frame Delimiter - once we see this in the preamble
+// we will start receiving actual data packets. The thing is, we may
+// ONLY see this and no other preamble bytes. See Tables 22-3 and 22-4
+// of 802.3-2022 specification.
+parameter SFD = 8'b1101_0101;
 
 
 // Counters how many times we enter these various RX_CTL states
@@ -400,7 +408,7 @@ always_ff @(posedge clk_rx) begin
 
     case (state)
 
-    S_IDLE: begin /////////////////////////////////////////////////////////
+    S_IDLE: begin: s_idle /////////////////////////////////////////////////////////
 
       last_rx_dv <= rx_dv;
       last_rx_err <= rx_err;
@@ -416,7 +424,7 @@ always_ff @(posedge clk_rx) begin
       // simplify this to rx_ctl_h and rx_ctl_l?).
       // Note that Table 4 shows RX_CTL H,L and not the decoded DV, ER (in other columns)
       case ({rx_dv, rx_err})
-      2'b00: begin
+      2'b00: begin: normal_interframe
         // Full idle - normal inter-frame situation
         // Bit 0: link status (1 = up)
         // Bit 2-1: speed: 00 = 2.5, 01 = 25, 10 = 125 MHz, 11 = Reserved
@@ -435,21 +443,28 @@ always_ff @(posedge clk_rx) begin
           last_interframe <= rx_data_h;
           in_band_differ <= '0;
         end
-      end // 2'b00
+      end: normal_interframe // 2'b00
 
-      2'b10: begin // 10 = DV and !ERR (comes on wire as 11)
+      2'b10: begin: normal_data_start // 10 = DV and !ERR (comes on wire as 11)
         // Normal data receiption: Begin packet receiption
         if (last_rx_dv != rx_dv || last_rx_err != rx_err)
           count_reception <= count_reception + 1'd1;
 
         in_receive <= '1;
         packet_rcv_err <= '0;
-        byte_pos <= 0;
+        packet_preamble_err <= '0;
+        byte_pos <= '0;
         if (ddr_data) begin
           // DDR, so we get a byte at a time:
           // 3:0 on high, 7:4 on low (RGMII 2.0 Spec, Table 1)
-          ram_wr_ena <= '1; // Write our byte
-          ram_wr_data <= {rx_data_l, rx_data_h};
+
+          if ({rx_data_l, rx_data_h} == SFD) begin
+            // We got the SFD right off the bat, so go directly to receiving.
+            state <= S_RECEIVING;
+          end else begin
+            state <= S_PREAMBLE;
+            byte_pos <= 1'd1; // We have received one preamble byte already
+          end
 
         end else begin
           // We always receive the low nibble first
@@ -457,15 +472,11 @@ always_ff @(posedge clk_rx) begin
           // RGMII 2.0 spec 5.0 says data _may_ be duplicated on low edge of clock
           nibble <= '1;
           // We will write when we have a full byte
+          state <= S_PREAMBLE;
         end
+      end: normal_data_start // 2'b00
 
-        // For now, we receive all bytes raw, don't check preamble,
-        // FCS, anything.
-        state <= S_RECEIVING;
-        
-      end // 2'b00
-
-      2'b01: begin
+      2'b01: begin: carrier_information
         // Carrier information
         // 0E = False carrier indication
         // 0F = Carrier Extend
@@ -475,23 +486,102 @@ always_ff @(posedge clk_rx) begin
         // But let's just ignore it for now
         if (last_rx_dv != rx_dv || last_rx_err != rx_err)
           count_carrier <= count_carrier + 1'd1;
-      end // 2'b00
+      end: carrier_information // 2'b00
 
-      2'b11: begin // 11 = DV and ERR (comes on wire as 10)
+      2'b11: begin: receive_error_interframe // 11 = DV and ERR (comes on wire as 10)
         // Transmit error propagation, not sure what to do if we get this while idle,
         // maybe just ignore it.
         // Data is ignored.
         if (last_rx_dv != rx_dv || last_rx_err != rx_err)
           count_receive_err <= count_receive_err + 1'd1;
-      end // 2'b00
+      end: receive_error_interframe // 2'b00
       endcase // rx_dv and rx_err
         
-    end // S_IDLE
+    end: s_idle // S_IDLE
 
 
-    // FOR NOW, we are receiving the whole packet verbatim, not checking for
-    // Preamble, SFD, or checking CRC/FCS.
-    S_RECEIVING: begin ///////////////////////////////////////////////////////
+    S_PREAMBLE: begin: s_preamble //////////////////////////////////////////////////////////////////////
+      // We count up to 8 preamble bytes, where the 8th must be the SFD.
+      // If we don't get the SFD, we should set an error flag.
+      // Our byte count is in byte_pos.
+      // Before we start receiving data, we should reset byte_pos to 0.
+
+      case ({rx_dv, rx_err})
+      2'b10: begin: preamble_normal_receive // Normal receive
+          // DDR, so we get a byte at a time:
+          // 3:0 on high, 7:4 on low (RGMII 2.0 Spec, Table 1)
+
+        if (ddr_data) begin: preamble_ddr_data
+
+          if ({rx_data_l, rx_data_h} == SFD) begin
+            // We got the SFD, so go directly to receiving.
+            state <= S_RECEIVING;
+            byte_pos <= '0;
+          end else if (byte_pos < 7) begin
+            // We are still reading preamble bytes
+            byte_pos <= byte_pos + 1'd1;
+            // TODO: Check if this is 0101_0101?
+          end else begin
+            // We have not found our preamble byte,
+            // set an error and start receiving
+            packet_preamble_err <= '1;
+            byte_pos <= '0;
+            state <= S_RECEIVING;
+          end
+
+        end: preamble_ddr_data else begin: preamble_non_ddr_data
+
+          // Non-DDR data, nibble at a time
+          nibble <= ~nibble;
+          if (nibble == '1) begin
+
+            // Check if we got the SFD or ran out of preamble bytes
+            if ({rx_data_h, cur_byte[3:0]} == SFD) begin
+              // We got the SFD, so go directly to receiving.
+              state <= S_RECEIVING;
+              byte_pos <= '0;
+              nibble <= '0;
+            end else if (byte_pos < 7) begin
+              // We are still reading preamble bytes
+              byte_pos <= byte_pos + 1'd1;
+              // TODO: Check if this is 0101_0101?
+            end else begin
+              // We have not found our preamble byte,
+              // set an error and start receiving
+              packet_preamble_err <= '1;
+              byte_pos <= '0;
+              nibble <= '0;
+              state <= S_RECEIVING;
+            end
+
+          end else begin
+            // First half of the nibble, save it
+            cur_byte[3:0] <= rx_data_h;
+          end
+
+        end: preamble_non_ddr_data
+      end: preamble_normal_receive
+
+      2'b01, // Carrier extend
+      2'b00: begin: preamble_interframe // Normal inter-frame
+        // We should go back to idle
+        // FIXME: Increment a counter with this unexpected situation?
+        state <= S_IDLE;
+        in_receive <= '0;
+      end: preamble_interframe
+
+      2'b11: begin: preamble_receive_error // Receive error
+        // I THINK that we ignore this byte/nibble and continue
+        // receiving the rest of the packet.
+        packet_rcv_err <= '1;
+        count_rcv_errors <= count_rcv_errors + 1'd1;
+      end: preamble_receive_error
+      endcase // preamble {rx_dv, rx_err}
+
+    end: s_preamble
+
+    // FOR NOW, we are receiving the whole packet verbatim, not checking CRC/FCS.
+    S_RECEIVING: begin /////////////////////////////////////////////////////////////////////////
       // We already got our first byte/nibble - now get more
       // TODO: Stop receiving after packet length > whatever the max is, 2000?
 
@@ -523,12 +613,13 @@ always_ff @(posedge clk_rx) begin
           nibble <= ~nibble;
           if (nibble == '1) begin
             // Getting the 2nd half of a nibble, so write the byte to current position
+            // and go to next position
             ram_wr_ena <= '1;
             ram_wr_data <= {rx_data_h, cur_byte[3:0]};
             ram_wr_addr <= ram_pos;
-          end else begin
-            // First half of the nibble, save it and increment counter
             byte_pos <= byte_pos + 1'd1;
+          end else begin
+            // First half of the nibble, save it
             ram_wr_ena <= '0;
             cur_byte[3:0] <= rx_data_h;
           end
