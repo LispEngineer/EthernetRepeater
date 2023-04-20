@@ -365,11 +365,15 @@ parameter SFD = 8'b1101_0101;
 
 
 // Counters how many times we enter these various RX_CTL states
+`ifdef IS_QUARTUS
+// QuestaSim does not like these initial conditions with always_ff:
+// # ** Error (suppressible): (vlog-7061) Variable '...' driven in an always_ff block, may not be driven by any other process.
 initial count_interframe = '0;
 initial count_reception = '0;
 initial count_receive_err = '0;
 initial count_carrier = '0;
 initial count_interframe_differ = '0;
+`endif // IS_QUARTUS
 
 // The last inter-frame data we got
 logic [3:0] last_interframe;

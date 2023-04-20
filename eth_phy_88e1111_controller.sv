@@ -70,12 +70,16 @@ module eth_phy_88e1111_controller #(
   output logic [15:0] d_soft_reset_checks
 );
 
+`ifdef IS_QUARTUS
+// QuestaSim does not like these initial conditions with always_ff:
+// # ** Error (suppressible): eth_phy_88e1111_controller.sv(171): (vlog-7061) Variable 'phy_reset' driven in an always_ff block, may not be driven by any other process. See eth_phy_88e1111_controller.sv(73).
 initial phy_reset = '1;
-initial config_error <= '0;
-initial connected <= '0;
-initial d_seen_states <= '0;
-initial d_soft_reset_checks <= '0;
-initial configured <= '0;
+initial config_error = '0;
+initial connected = '0;
+initial d_seen_states = '0;
+initial d_soft_reset_checks = '0;
+initial configured = '0;
+`endif
 
 logic reset_into_mii = '0;
 logic c_mii_busy;

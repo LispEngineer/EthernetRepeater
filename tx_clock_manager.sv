@@ -62,6 +62,7 @@ module tx_clock_manager #(
   output logic link_up
 );
 
+
 logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_speed_10;
 logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_speed_100;
 logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_speed_1000;
@@ -77,10 +78,10 @@ logic [STABILIZATION_LENGTH - 1:0] stab_rx_speed_100;
 logic [STABILIZATION_LENGTH - 1:0] stab_rx_speed_1000;
 logic [STABILIZATION_LENGTH - 1:0] stab_rx_link_up;
 
-logic final_rx_speed_10;
-logic final_rx_speed_100;
-logic final_rx_speed_1000;
-logic final_rx_link_up;
+logic final_rx_speed_10 = '0;
+logic final_rx_speed_100 = '0;
+logic final_rx_speed_1000 = '1;
+logic final_rx_link_up = '0;
 logic valid_rx_speed_10;
 logic valid_rx_speed_100;
 logic valid_rx_speed_1000;
@@ -88,6 +89,11 @@ logic valid_rx_link_up;
 
 logic speed_is_one_hot;
 logic entirely_valid = '0;
+
+// The inputs to the clock mux that change slowly
+logic current_clk_tx_10 = final_rx_speed_10;
+logic current_clk_tx_100 = final_rx_speed_100;
+logic current_clk_tx_1000 = final_rx_speed_1000;
 
 // Synchronizers
 always_ff @(posedge clk) begin: synchronizers
@@ -138,6 +144,19 @@ always_ff @(posedge clk) begin: stabilizers
   final_rx_link_up    <= entirely_valid ? stab_rx_link_up[0]    : final_rx_link_up;
 end: stabilizers
 
+/////////////////////////////////////////////////////////////////////////////////////
+// Our actual clock multiplexer based on the "current" clock setting.
+
+// Note that this clock multiplexer is glitch free BUT it seems to take at
+// least 3 cycles of the NEW CLOCK before it starts outputing again.
+clock_mux tx_clock_mux (
+  .clk       ({clock_125, clock_25, clock_2p5}), 
+  .clk_select({current_clk_tx_1000, current_clk_tx_100, current_clk_tx_10}),
+  .clk_out(clk_tx)
+);
+
+
+/////////////////////////////////////////////////////////////////////////////////////
 // Now we have to create a state machine:
 // Monitor for changes in final_rx_link_up or the rx_speeds.
 // When any of those change, or (global) reset is asserted:
@@ -145,7 +164,30 @@ end: stabilizers
 // Before deasserting TXreset, change the clock speed with clock multiplexer.
 // After N cycles of changing the clock speed, if link is up, deassert TXreset.
 
+localparam S_IDLE = 0,
+           S_CHANGE_DETECTED = 1,
+           S_CLOCK_CHANGE = 2,
+           S_CHANGE_WAIT = 3;
+logic [3:0] state = S_IDLE;
 
+always_ff @(posedge clk) begin: main_state_machine
+
+  if (reset) begin: external_reset
+
+    reset_tx <= '1;
+    state <= S_IDLE;
+
+  end: external_reset else begin: state_machine_states
+
+    reset_tx <= '0; // TEMPORARY
+
+    current_clk_tx_10 <= final_rx_speed_10;
+    current_clk_tx_100 <= final_rx_speed_100;
+    current_clk_tx_1000 <= final_rx_speed_1000;
+  
+  end: state_machine_states
+
+end: main_state_machine
 
 endmodule // tx_clock_manager
 
