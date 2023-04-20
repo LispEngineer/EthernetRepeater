@@ -1300,6 +1300,8 @@ set_global_assignment -name EDA_TEST_BENCH_FILE rx_ram_buffer_fast.v -section_id
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE SPEED
 set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
 set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON
+set_global_assignment -name VERILOG_FILE clock_mux.v
+set_global_assignment -name SYSTEMVERILOG_FILE tx_clock_manager.sv
 set_global_assignment -name SYSTEMVERILOG_FILE one_accumulator.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ethernet_trx.sv
 set_global_assignment -name SYSTEMVERILOG_FILE eth_phy_88e1111_controller.sv
