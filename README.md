@@ -14,6 +14,10 @@ FPGA to be a bidirectional repeater.
 
 Do all these things without a soft processor.
 
+Learn about constraints in detail, constrain everything, and make sure
+the timing analyzer is super happy. Figure out the maximum speed you can
+run the repeater at (the part that copies data between ports).
+
 **Initial goals:**
 
 * Build an MDC/MDIO interface to read all the ports.
@@ -29,6 +33,61 @@ Do all these things without a soft processor.
   * Display information on LCD
   * Display information on VGA or DVI
   * Send packet information via USB UART
+
+
+**Extended goals:**
+
+* Build ARP in for fixed IP
+  * Respond to ARP requests
+  * Make ARP requests
+  * Build up an ARP table
+  * Read network configuration from EEPROM, flash or SD card
+
+* Handle ICMP ping requests
+
+* Send status data via UDP periodically while being a repeater
+  * Number of packets received and sent on each port/direction
+  * Number of errors, etc., not sent
+
+* Build a hub/switch with 3+ ports instead of a simple repeater
+
+* Status outputs
+  * Build VGA/HDMI video output that shows state using character mapped display
+  * Status reported by UART periodically
+  * Audio status output (like a click)
+
+* Other speeds/interfaces
+  * Handle SFP at 1G
+  * Handle SFP+ at 10G
+  * Handle other interfaces than RGMII
+
+* Other PHYs
+  * HSMC-Ethernet
+  * Write a custom "computer" for initializing PHYs with MDIO via a "program"
+
+* Other FPGAs
+  * Cyclone V
+  * Cyclone 10
+  * Other Intel chips
+  * Kintex-7
+  * Artix-7
+
+* Build AXI4 interfaces and multiplexer/switch
+
+**Other Ethernet Applications:**
+
+* Stream audio via UDP to the board and output via DAC
+* Stream audio input via UDP from the board to a network host
+* Do DSP on network received audio and send it back over network
+  * Or out the local DAC
+* Send PS/2 keyboard and/or mouse to the network
+* Send UART or RS-232 to the network and/or from the network
+
+**Misc fun:**
+
+* Use the on-board SRAM or SDRAM... for something
+  * (Write your own SDRAM controller, of course.)
+* Implement Pimoroni Scroll Hat Mini for status output and button input
 
 
 ## Hardware
@@ -54,8 +113,6 @@ added by HSMC card. Some useful features:
 * Questa Intel Starter FPGA Edition-64 2021.2 (previously known as ModelSim)
 
 
-
-
 # Current Functionality
 
 * Ethernet MII Management Interface (MDC/MDIO)
@@ -71,22 +128,39 @@ added by HSMC card. Some useful features:
   * Works at 10/100/1000 using PLL generated clock at 2.5, 25, 125 MHz
     * And sends data on TXD with DDR encoding at 1000
     * Sends TX_DV and TX_ER via DDR
+  * Automatically adjusts transmit speed based on received in-band data speed information
+    * Uses a clock multiplexer (takes a few cycles to settle) from Quartus documentation
+    * Asserts reset for the transmitter (only) when adjusting clock speed
   * Sends a fixed packet (a silly ARP request)
     * Calculates the CRC on the fly and sends it, using [generated HDL](https://bues.ch/cms/hacking/crcgen)
 
 * RGMII Receive Capability
   * FIFO for putting notifications of fully received packets into
-  * RAM buffer for putting full packet data into (including preamble/SFD for now)
+  * RAM buffer for putting full packet data into (excluding preamble/SFD, including FCS/CRC - not checked!)
   * (Disabled) "Bogus" test implementation of receiver to exercise RAM, FIFO
   * In-Band metadata connected
     * Tested at 10/100 Full/Half and 1000 Full
       * (PHY will not autonegotiate a 1000 Half link with default settings)
     * Shows 1000 speed when no connection (Reg20, bits 6:4)
-  * Receives 10/100 data - totally raw (one nibble at a time)
-    * Does not track preamble, SFD, FCS/CRC - just stores all data received while RX_DV
+  * Receives data at all speeds
+    * Uses inverted clock on DDR to get 1000 data without an extra cycle latency
+    * Tracks the preamble for SFD; does not store preamble or SFD in receive buffer
+      * Allows short preambles or missing preamble bytes from the PHY:
+      * "Clause 22.2.3.2.2 shows all that is required is that the SFD is received fully and it 
+        is correctly aligned at the MII pins. No preamble preceding SFD needs to be conveyed 
+        through the MII."
+        [Source](https://ez.analog.com/industrial-ethernet/physical-layer-devices/f/q-a/558604/adin1300-10base-t-runt-preamble?ReplySortBy=CreatedDate&ReplySortOrder=Ascending)
+        and of course see the 802.3-2022 spec itself.
+      * Handles missing preamble nibbles. [Wikipedia](https://en.wikipedia.org/wiki/Media-independent_interface) says:
+        "The receive data valid signal (RX_DV) is not required to go high immediately 
+        when the frame starts, but must do so in time to ensure the `start of frame 
+        delimiter` byte is included in the received data. Some of the preamble nibbles 
+        may be lost."
+        * Actually, it handles missing preamble bytes; it expects the SFD to come in
+          byte-aligned.
     * BUG: Reports length off by one
-  * BUG: Receiving 1000 data does not work (one byte at a time with DDR)
-    * BUG: Looks like the DDR data receiver is ... off - see below
+  * Displays the first 32 bytes of payload as ASCII characters on the LCD
+    (after the Ethernet header: 2 MACs and an EtherType)
 
 * Built-in LCD driver
   * Can put a character anywhere with single activation request
@@ -112,10 +186,6 @@ added by HSMC card. Some useful features:
     (Use a clock multiplexer)
 
 * Simple RGMII TX interface
-  * Write ALTDDIO_IN module that aligns `_h` and `_l`
-  * Handle changing speeds dynamically & reconfiguring delay PLLs
-    * Or use a clock multiplexer and choose the right clock
-    * Ensure to hold TX_DV low while switching clock
   * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
     * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
   * Use a RAM with 2048 byte-long packet slots (enough for the usual maximum frame size)
@@ -132,18 +202,9 @@ added by HSMC card. Some useful features:
     * Adding an entry to the transmit FIFO
 
 * Simple RGMII RX interface
-  * Handle all 3 speeds: 1000 does not currently work
   * Check frame CRC
-  * Handle non-nibble/byte aligned receives (if necessary? and see below)
-    * Once we see the SFD (`0xD5`) we should jump to the payload, even if it
-      is less than the 8th byte. This way received data is always at 8.
-    * "Clause 22.2.3.2.2 shows all that is required is that the SFD is received fully and it 
-      is correctly aligned at the MII pins. No preamble preceding SFD needs to be conveyed 
-      through the MII."
-      [Source](https://ez.analog.com/industrial-ethernet/physical-layer-devices/f/q-a/558604/adin1300-10base-t-runt-preamble?ReplySortBy=CreatedDate&ReplySortOrder=Ascending)
-      and of course see the 802.3-2022 spec itself.
   * Expand RAM size:
-    * Allow reads 32 or 64 bits at a time, but still write 1 byte at a time with byte selects
+    * Allow reads 32 or 64 bits at a time, but still write during RX 1 byte at a time with byte selects
     * Same, but write a word at a time
     * Expand RAM size by 1 bit, when that Nth bit is set it signals
       end of packet, and the other bits signify things like:
@@ -155,11 +216,6 @@ added by HSMC card. Some useful features:
         the final length and error information
   * Build a streaming output (AXI-Stream?) when we are getting a packet
     * Have an end of packet flag, which shows CRC and framing errors
-  * Handle missing preamble nibbles: [Wikipedia](https://en.wikipedia.org/wiki/Media-independent_interface) says:
-    "The receive data valid signal (RX_DV) is not required to go high immediately 
-    when the frame starts, but must do so in time to ensure the "start of frame 
-    delimiter" byte is included in the received data. Some of the preamble nibbles 
-    may be lost."
 
 * Improved CRC generator specifically for Cyclone IV
   * Build a 3 & 4 entry XOR LUT mechanism to target the Cyclone IV's 4-LUT
@@ -220,53 +276,20 @@ added by HSMC card. Some useful features:
   [This](https://www.intel.com/content/www/us/en/programmable/quartushelp/14.1/mergedProjects/msgs/msgs/wfygr_fygr_user_global_ignored.htm) talks about it
   but doesn't really explain why.
 
-* (This may be out of date)
-  At 10/Full, the PHY gets an in-band data mismatch every time there is a packet received.
-  * This is repeatable, just send ARP requests while it is in 10/Half.
-  * Also 10/Full, 100/Half and 100/Full
-  * Harder to say, but also seems to happen at 1000/Full (blink is so faint)
-  * TODO: Show the H & L sides when there is a packet mismatch?
-  * Test results (with this commit):
-    * The count of received packets is exactly the same as the count of interframe_differ
-      packets. I wonder if this means the receiver starts getting stuff in the middle of
-      an interframe in-band signaling packet and directly outputs that to the MAC?
-    * The data_h and data_l seem to be a consistent 0xFD or 8'b1111_1101 based on the
-      output of this commit receiving at 1000. For 10, it seems to be 0xF9 / 8'b1111_1001.
-      For 100, it seems to be 0xFB / 8'b1111_1011. For Half Duplex 100 it shows 0xF3,
-      8'b1111_0011 indicating half duplex 100 and an F. Predictably, for 100/half it shows 0xF1.
-      * This seems to imply that the mismatch / F indicates that data is about to be received?
-    * When the link is down it shows a mismatch 0x4C or 8'b0010_1100, 0x42 or 8'b0010_0010,
-      or 0x49 or 8'b0010_1001. It seems the old (or new?) speed is shown during this misatch.
-    * I guess we just ignore the mismatches.
-    * WHAT ABOUT receive errors?
-
-* The packets we start to receive get ended with 0,1 - carrier something - according to
-  our counters. They don't have errors (receive error counter is 0) and don't have
-  normal ends.
-  * Register 20.15 is used to block carrier extension in GMII (Sec 2.2.3.2)
-  * Says to refer to the White Paper "TRR Byte Stuffing and MACs"
-
 * If we get RX_ERR (RX_ER, RXERR) with RX_DV, what do we do with the data in that byte/nibble?
   * For now, I am just ignoring it (not adding it to receive buffer)
 
 * Is there a standard, fault tolerant "in use" system so we can allocate buffers, use them,
   and release them in a safe fashion?
 
+
 ## Known Bugs
 
 * Have an off by one error on receive packet length because it
   uses the final byte write position and not the actual length.
 
-* Packets received at 1000 are one byte short - probably missing a
-  preamble byte.
-  * 88E1111 datasheet mentions `dribble bits` and says `nibbles on MII are aligned to start
-    of frame delimiter and dribble bits are truncated`.
-    * "Dribble bits are extra bits of data that were received after the Ethernet CRC."
-      [Discussion](https://groups.google.com/g/comp.dcom.lans.ethernet/c/ywqOT9aUnJY).
-  * 88E1111 datasheet sections 4.14.12-14 show RGMII Receive Latency Timing
-  * [Intel's Triple-Speed Ethernet](https://www.intel.com/content/www/us/en/docs/programmable/683402/22-4-21-1-0/preamble-processing.html)
-    preamble processing looks for SFD within 7 bytes. (It also allows IPG of 8/6 bytes in 1000 or 100/10,
-    below the 96 bit times in the spec.)
+* Lots of timing analyzer issues that don't seem to impact operation:
+  "Critical Warning (332148): Timing requirements not met"
 
 * Timing analyzer does not like the CRC generator running at 125MHz; compiling gives a Critical Warning
   * Open Timing Analyzer -> Tasks -> Reports -> Custom Reports -> Report Timing Closure Recommendations and use 20,000 paths
@@ -302,6 +325,8 @@ added by HSMC card. Some useful features:
   * FIXED: Delay the `_h` side by a cycle to align it with the `_l` and these two things are fixed:
     1. The data bytes for 1000 speed are properly aligned
     2. The RX_CTL no longer shows unexpected frame extension
+  * REFIXED: Use "clock inversion" on the DDR clock and you get the `_h` and `_l` together without
+    latency. Not sure about timing implications.
 
 ### Hardware Bugs
 
@@ -309,6 +334,7 @@ added by HSMC card. Some useful features:
   causes ETH0 to be unreponsive when plugged in, but ETH1 reponds
   just fine and lights up 1000, DUP, RX lights.
   * I have since purchased a second DE2-115 that seems to have two working ETH ports.
+
 
 # Notes on FPGA Resources / Megafunctions / Hard IP
 
@@ -340,6 +366,14 @@ two specifically as a pair.
 This is necessary for RGMII, as those specific two bits go together to form the RX_CTL
 signal. At 1000 speed, the two go together to make a single byte of data transfer as well.
 
+It was necessary to configure the DDR input to use
+"clock inversion" to receive the `_h` and `_l` bytes of the same
+cycle concurrently. Otherwise, it was necessary to save the high
+from the previous cycle and the low from the current cycle when
+processing the data on the positive edge, which created a cycle latency.
+I do _not_ know how this impacts timing, but the timing analyzer is really
+unhappy.
+
 ## ALTSYNCRAM
 
 The readout on this seems to take 2 cycles, not one.
@@ -353,7 +387,7 @@ The readout on this seems to take 2 cycles, not one.
 
 I made two RAMs:
 * rx_ram_buffer - registered q output
-* rx_ram_buffer_fast - unregistered q output
+* rx_ram_buffer_fast - unregistered q output (one cycle latency instead of two)
 
 ## CRC Generator Modules
 
@@ -405,6 +439,9 @@ and made it into SystemVerilog. Source is [on Github](https://github.com/mbuesch
 
 * `packeth`
   * GUI (and CLI?) program to send random Ethernet packets, very useful
+
+* `scapy`
+  * [Docs](https://scapy.readthedocs.io/en/latest/introduction.html)
 
 * Ubuntu network settings
   * For the wired ethernet, make it quiet like this:
@@ -616,6 +653,16 @@ Docs:
 
 * Ethernet Errors
   * [TX_ER Question](https://electronics.stackexchange.com/questions/261123/gmii-rgmii-tx-er-signal-guaranteed-functionality)
+  * 88E1111 datasheet mentions `dribble bits` and says `nibbles on MII are aligned to start
+  of frame delimiter and dribble bits are truncated`.
+  * "Dribble bits are extra bits of data that were received after the Ethernet CRC."
+    [Discussion](https://groups.google.com/g/comp.dcom.lans.ethernet/c/ywqOT9aUnJY).
+  * 88E1111 datasheet sections 4.14.12-14 show RGMII Receive Latency Timing
+  * [Intel's Triple-Speed Ethernet](https://www.intel.com/content/www/us/en/docs/programmable/683402/22-4-21-1-0/preamble-processing.html)
+    preamble processing looks for SFD within 7 bytes. (It also allows IPG of 8/6 bytes in 1000 or 100/10,
+    below the 96 bit times in the spec.)
+
+
 
 * Packet Generator - section 2.21 (uses 12 bytes of IPG, 8 bytes of preamble)
 

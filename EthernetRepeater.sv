@@ -439,14 +439,14 @@ assign HEX6 = ~ihex6;
 assign HEX7 = ~ihex7;
 
 // Show the saved data on hex 0-3
-seven_segment hex0 (.num(hex_display[3:0]),   .hex(ihex0));
-seven_segment hex1 (.num(hex_display[7:4]),   .hex(ihex1));
-seven_segment hex2 (.num(hex_display[11:8]),  .hex(ihex2));
-seven_segment hex3 (.num(hex_display[15:12]), .hex(ihex3));
-seven_segment hex4 (.num(hex_display[19:16]), .hex(ihex4));
-seven_segment hex5 (.num(hex_display[23:20]), .hex(ihex5));
-seven_segment hex6 (.num(hex_display[27:24]), .hex(ihex6));
-seven_segment hex7 (.num(hex_display[31:28]), .hex(ihex7));
+seven_segment sshex0 (.num(hex_display[3:0]),   .hex(ihex0));
+seven_segment sshex1 (.num(hex_display[7:4]),   .hex(ihex1));
+seven_segment sshex2 (.num(hex_display[11:8]),  .hex(ihex2));
+seven_segment sshex3 (.num(hex_display[15:12]), .hex(ihex3));
+seven_segment sshex4 (.num(hex_display[19:16]), .hex(ihex4));
+seven_segment sshex5 (.num(hex_display[23:20]), .hex(ihex5));
+seven_segment sshex6 (.num(hex_display[27:24]), .hex(ihex6));
+seven_segment sshex7 (.num(hex_display[31:28]), .hex(ihex7));
 
 ///////////////////////////////////////////////////////////////////////////////
 // Ethernet Management Interface
