@@ -361,7 +361,7 @@ localparam TRIES_FIFO_INSERT = 3'd3;
 // we will start receiving actual data packets. The thing is, we may
 // ONLY see this and no other preamble bytes. See Tables 22-3 and 22-4
 // of 802.3-2022 specification.
-parameter SFD = 8'b1101_0101;
+localparam SFD = 8'b1101_0101;
 
 
 // Counters how many times we enter these various RX_CTL states

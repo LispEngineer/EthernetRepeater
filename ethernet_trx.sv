@@ -307,29 +307,47 @@ rgmii_rx ethernet_rx (
 
 
 ////////////////////////////////////////////////////////////////////////////
-// TX Interface
+// TX Interface with Clock Manager (multiplexer following RX speed output)
 
-// FIXME: Until we define the TX clock multplexer
+// The clock we should use for transmit
 logic clock_eth_tx;
+// Whether the transmitter should be in reset (usually during clock changes)
+logic reset_tx;
 
-`define SPEED_100
-`ifdef SPEED_1000
-assign clock_eth_tx = clk_125;
-`define USE_DDR 1'b1
+logic tx_speed_1000, tx_speed_100, tx_speed_10;
+logic tx_link_up, tx_changing;
 
-`elsif SPEED_100
-assign clock_eth_tx = clk_25;
-`define USE_DDR 1'b0
 
-`elsif SPEED_10
-assign clock_eth_tx = clk_2p5;
-`define USE_DDR 1'b0
-`endif
+tx_clock_manager tx_clock_manager_inst (
+  .clk, .reset,
+
+  .clock_125(clk_125),
+  .clock_25(clk_25),
+  .clock_2p5(clk_2p5),
+
+  // PHY RX inputs - unsynchronzed (uses the RX clock domain)
+  .rx_speed_10(speed_10),
+  .rx_speed_100(speed_100),
+  .rx_speed_1000(speed_1000),
+  .rx_link_up(link_up),
+
+  // TX MAC outputs
+  .tx_speed_10,
+  .tx_speed_100,
+  .tx_speed_1000,
+  .clk_tx(clock_eth_tx),
+  .reset_tx,
+
+  // Other outputs
+  .link_up(tx_link_up),
+  .changing(tx_changing)
+);
+
 
 rgmii_tx ethernet_tx (
   .tx_clk(clock_eth_tx),
-  .reset(reset), // FIXME: Until we define reset cascade
-  .ddr_tx(`USE_DDR), // 0 for 10/100, 1 for 1000
+  .reset(reset_tx), // This reset_tx will be one cycle later than reset if we don't do || reset, which is probably okay
+  .ddr_tx(tx_speed_1000), // 0 for 10/100, 1 for 1000
 
   .activate(tx_activate),
   .busy(tx_busy),
@@ -343,9 +361,6 @@ rgmii_tx ethernet_tx (
   // Debug ports
   .crc_out(tx_crc_out)
 );
-
-
-
 
 
 

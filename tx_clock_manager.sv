@@ -74,6 +74,10 @@ module tx_clock_manager #(
 // transmit reset?
 
 localparam CHANGE_COUNTER_BITS = $clog2(POST_CHANGE_DURATION);
+localparam initial_final_speed_10 = '0,
+           initial_final_speed_100 = '0,
+           initial_final_speed_1000 = '0,
+           initial_final_link_up = '0;
 
 // Input synchronizers from RX
 logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_speed_10;
@@ -94,10 +98,10 @@ logic [STABILIZATION_LENGTH - 1:0] stab_rx_speed_1000;
 logic [STABILIZATION_LENGTH - 1:0] stab_rx_link_up;
 
 // Final stable outputs
-logic final_rx_speed_10 = '0;
-logic final_rx_speed_100 = '0;
-logic final_rx_speed_1000 = '1;
-logic final_rx_link_up = '0;
+logic final_rx_speed_10 = initial_final_speed_10;
+logic final_rx_speed_100 = initial_final_speed_100;
+logic final_rx_speed_1000 = initial_final_speed_1000;
+logic final_rx_link_up = initial_final_link_up;
 // Signals if the stabilizer is all 1 or all 0
 logic valid_rx_speed_10;
 logic valid_rx_speed_100;
@@ -111,10 +115,10 @@ logic entirely_valid = '0;
 
 // The inputs to the clock mux that change slowly and only
 // when things are stable, and only during a TX reset.
-logic current_clk_tx_10 = final_rx_speed_10;
-logic current_clk_tx_100 = final_rx_speed_100;
-logic current_clk_tx_1000 = final_rx_speed_1000;
-logic current_link_up = final_rx_link_up;
+logic current_clk_tx_10 = initial_final_speed_10;
+logic current_clk_tx_100 = initial_final_speed_100;
+logic current_clk_tx_1000 = initial_final_speed_1000;
+logic current_link_up = initial_final_link_up;
 
 // Outputs
 assign link_up = current_link_up;
