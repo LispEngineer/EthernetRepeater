@@ -20,20 +20,19 @@ run the repeater at (the part that copies data between ports).
 
 **Initial goals:**
 
-* Build an MDC/MDIO interface to read all the ports.
+* [DONE - ALL] Build an MDC/MDIO interface to read all the ports.
   * Display them on the 7-segment displays
-* Build an MDC/MDIO interface to write (and read) all the ports.
-* Build an interface that sends a simple ARP request packet
+* [DONE] Build an MDC/MDIO interface to write (and read) all the ports.
+* [DONE - ALL] Build an interface that sends a simple ARP request packet
   * Calculate CRC
   * Send at 10BASE-T
   * Send at 100BASE-TX
   * Send at 1000BASE-T
-* Build an interface that reads a single packet
+* [DONE] Build an interface that reads a single packet
   * Display information on 7-seg
-  * Display information on LCD
+  * [DONE] Display information on LCD
   * Display information on VGA or DVI
   * Send packet information via USB UART
-
 
 **Extended goals:**
 
@@ -45,11 +44,18 @@ run the repeater at (the part that copies data between ports).
 
 * Handle ICMP ping requests
 
+* Build UDP "echo" protocol implementation [Echo](https://en.wikipedia.org/wiki/Echo_Protocol)
+
+* Handle Ethernet low level stuff
+  * Ethernet flow control, pause frame
+  * Other stuff using well-known MAC addresses/multicast addresses
+
 * Send status data via UDP periodically while being a repeater
   * Number of packets received and sent on each port/direction
   * Number of errors, etc., not sent
 
 * Build a hub/switch with 3+ ports instead of a simple repeater
+  * See [IEEE 802.1Q-2022](https://standards.ieee.org/ieee/802.1Q/10323/)
 
 * Status outputs
   * Build VGA/HDMI video output that shows state using character mapped display
