@@ -12,7 +12,7 @@
 module test_tx_clock_manager();
 
 logic clk = '0; // System clock (typically 50MHz in DE2-115)
-logic reset = '0;
+logic reset = '1;
 logic clk_125 = '0;
 logic clk_25 = '0;
 logic clk_2p5 = '0;
@@ -54,6 +54,7 @@ logic tx_speed_1000;
 logic clk_tx;
 logic reset_tx;
 logic tx_link_up;
+logic tx_changing;
 
 tx_clock_manager dut (
   .clk, .reset,
@@ -76,7 +77,8 @@ tx_clock_manager dut (
   .reset_tx,
 
   // Other outputs
-  .link_up(tx_link_up)
+  .link_up(tx_link_up),
+  .changing(tx_changing)
 );
 
 
@@ -90,47 +92,51 @@ initial begin
   clk <= 1'b0;
   reset <= 1'b1; 
   #222; reset <= 1'b0;
+  rx_link_up <= '0; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100; // 88E1111 PHY defaults to 1G RX when no link
 
   // FIXME: Move the $displays after the #delays;
 
+  #778; 
   // Test 100
   $display("Starting 100 @ ", $time);
-  #2000; rx_link_up <= '1; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
-  #4000; rx_link_up <= '0; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
+  rx_link_up <= '1; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
+  #40000; rx_link_up <= '0; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
 
+  #2000; 
   // Test 1000
   $display("Starting 1000 @ ", $time);
-  #2000; rx_link_up <= '1; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
-  #4000; rx_link_up <= '0; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
+  rx_link_up <= '1; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
+  #40000; rx_link_up <= '0; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
 
+  #2000; 
   // Test 10
   $display("Starting 10 @ ", $time);
-  #2000; rx_link_up <= '1; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b001;
-  #4000; rx_link_up <= '0;
+  rx_link_up <= '1; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b001;
+  #40000; rx_link_up <= '0;
 
   // Test invalid inputs
   // Invalid: Non-one-hot
   $display("Starting one-hot-invalid @ ", $time);
-  #2000; rx_link_up <= '1;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b110;
+  #20000; rx_link_up <= '1;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b110;
   $display("Starting 100 @ ", $time);
-  #2000;                    {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
+  #20000;                    {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
   $display("Starting one-hot-invalid @ ", $time);
-  #2000;                    {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b000;
+  #20000;                    {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b000;
   $display("Starting 100 @ ", $time);
-  #2000;                    {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
+  #20000;                    {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
   $display("Starting 1000 without link down @ ", $time);
-  #2000; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100; // Shift without link down
+  #20000; {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100; // Shift without link down
   $display("Starting quick shifts @ ", $time);
-  #125;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010; // Fast shifts
-  #125;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b001;
-  #125;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
-  #125;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
+  #1250;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010; // Fast shifts
+  #1250;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b001;
+  #1250;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b010;
+  #1250;  {rx_speed_1000, rx_speed_100, rx_speed_10} = 3'b100;
 
   $display("Final link down @ ", $time);
-  #2000; rx_link_up <= '0;
+  #20000; rx_link_up <= '0;
 
   // Stop the simulation at appropriate point
-  #4000;
+  #40000;
   $display("Ending simulation @ ", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!
