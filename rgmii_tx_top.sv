@@ -146,12 +146,15 @@ rgmii_tx #(
   .tx_data_l,
   .tx_ctl_h, // TX_EN
   .tx_ctl_l,  // TX_ERR XOR TX_EN
+
+  // RAM & FIFO clock are clk_tx
   .ram_rd_ena,
   .ram_rd_addr, // Read address
   .ram_rd_data, // Read data output
   .fifo_rd_empty,
   .fifo_rd_req,
   .fifo_rd_data,
+  
   .crc_out
 );
 

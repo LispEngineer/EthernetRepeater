@@ -58,7 +58,7 @@ module rgmii_tx #(
   // RAM reader - synchronous to clk_tx
   output logic                 ram_rd_ena,
   output logic [BUFFER_SZ-1:0] ram_rd_addr, // Read address
-  output logic           [7:0] ram_rd_data, // Read data output
+  input  logic           [7:0] ram_rd_data, // Read data output
 
   // FIFO reader - synchronous to clk_tx
   input  logic                  fifo_rd_empty,
@@ -174,7 +174,8 @@ assign ram_rd_addr = {cur_buf_num, rd_pos};
 always_ff @(posedge clk_tx) begin: ram_reader
   if (!reset) begin: ram_reader_not_reset
 
-    // Save our fifo data so we can start reading from RAM
+    // Save our fifo data so we can start reading from RAM -
+    // the FIFO read request signal is set/reset at the main state machine
     if (state == S_PREAMBLE && count == FIFO_RD_LATENCY) begin: read_fifo
       saved_fifo <= fifo_rd_data;
       rd_pos <= 0;
@@ -189,7 +190,7 @@ always_ff @(posedge clk_tx) begin: ram_reader
         // but also on 7. We have to read each cycle.
         if (count >= 7 - RAM_RD_LATENCY + 1) begin
           ram_rd_ena <= '1;
-          rd_pos <= rd_pos + 1;
+          rd_pos <= rd_pos + 1'd1;
           // RAM read enable is always enabled
           current_data <= ram_rd_data;
           // Save where we will stop reading from RAM
@@ -201,7 +202,7 @@ always_ff @(posedge clk_tx) begin: ram_reader
         // from the RAM. When we read too far, that's fine, we can ignore it.
         // once we're out of S_DATA, it will stop.
         ram_rd_ena <= '1;
-        rd_pos <= rd_pos + 1;
+        rd_pos <= rd_pos + 1'd1;
         // RAM read enable is always enabled
         current_data <= ram_rd_data;
 
@@ -212,10 +213,16 @@ always_ff @(posedge clk_tx) begin: ram_reader
     end: ddr_ram_reader else begin: sdr_ram_reader
 
       // FIXME: CODE ME
+      ram_rd_ena <= '0;
+      rd_pos <= '0;
 
     end: sdr_ram_reader
   
-  end: ram_reader_not_reset
+  end: ram_reader_not_reset else begin: ram_reader_reset
+
+    // TODO: 
+
+  end: ram_reader_reset
 end: ram_reader
 
 

@@ -224,7 +224,7 @@ always_ff @(posedge clk) begin: main_state_machine
     reset_tx <= '1;
     changing <= '0;
     state <= S_CHANGE_DETECTED; // When we leave reset, set the transmit clock
-    counter <= PRE_CHANGE_DURATION;
+    counter <= CHANGE_COUNTER_BITS'(PRE_CHANGE_DURATION);
 
   end: external_reset else begin: state_machine_states
 
@@ -245,7 +245,7 @@ always_ff @(posedge clk) begin: main_state_machine
         // (See above for change_detected definition)
 
         state <= S_CHANGE_DETECTED;
-        counter <= PRE_CHANGE_DURATION;
+        counter <= CHANGE_COUNTER_BITS'(PRE_CHANGE_DURATION);
 
       end: found_change else begin: no_change
 
@@ -278,7 +278,7 @@ always_ff @(posedge clk) begin: main_state_machine
         {current_clk_tx_1000, current_clk_tx_100, current_clk_tx_10} <=
           {final_rx_speed_1000, final_rx_speed_100, final_rx_speed_10};
         current_link_up <= final_rx_link_up;
-        counter <= POST_CHANGE_DURATION;
+        counter <= CHANGE_COUNTER_BITS'(POST_CHANGE_DURATION);
         state <= S_CHANGE_WAIT;
       end else begin
         // Our inputs aren't stable yet (again?) so just wait for them to stabilize
@@ -302,7 +302,7 @@ always_ff @(posedge clk) begin: main_state_machine
         // We have stable inputs, decide what to do...
         if (change_detected) begin
           // Go back to the beginning and restart our change process
-          counter <= PRE_CHANGE_DURATION;
+          counter <= CHANGE_COUNTER_BITS'(PRE_CHANGE_DURATION);
           state <= S_CHANGE_DETECTED;
         end else begin
           // We are done!
