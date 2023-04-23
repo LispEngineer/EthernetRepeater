@@ -12,114 +12,35 @@
 // Simulation: Tick at 1ns (using #<num>) to a precision of 0.1ns (100ps)
 `timescale 1 ns / 100 ps
 
-// This module is usually in its own clock domain (tx_clk).
+// This module is usually in its own clock domain (clk_tx).
 // This module outputs data and clock completely aligned.
-// If the `gtx_clk` needs to be skewed, it has to happen outside of here.
+// If the `gclk_tx` needs to be skewed, it has to happen outside of here.
 
-// Our fixed send data, for now,
-// a full 64 bytes long
-module data_packet (
-  input  logic [5:0] addr,
-  output logic [7:0] val
-);
-
-always_comb
-  case (addr)
-  6'd0:  val = 8'hff; // Dest addres
-  6'd1:  val = 8'hff;
-  6'd2:  val = 8'hff;
-  6'd3:  val = 8'hff;
-  6'd4:  val = 8'hff;
-  6'd5:  val = 8'hff;
-  6'd6:  val = 8'h06; // Source address 
-  6'd7:  val = 8'he0;
-  6'd8:  val = 8'h4c;
-  6'd9:  val = 8'hDF;
-  6'd10: val = 8'hDF;
-  6'd11: val = 8'hDF;
-  6'd12: val = 8'h08; // Packet type (ARP)
-  6'd13: val = 8'h06;
-  6'd14: val = 8'h00; // ARP START - ARP Hardware Type
-  6'd15: val = 8'h01;
-  6'd16: val = 8'h08; // Protocol - IPv4
-  6'd17: val = 8'h00;
-  6'd18: val = 8'h06; // Hardware size: 6
-  6'd19: val = 8'h04; // Protocol size: 4
-  6'd20: val = 8'h00; // Opcode: 0x0001 (Request)
-  6'd21: val = 8'h01;
-  6'd22: val = 8'h06; // Sender MAC (made up)
-  6'd23: val = 8'he0;
-  6'd24: val = 8'h4c;
-  6'd25: val = 8'hDF;
-  6'd26: val = 8'hDF;
-  6'd27: val = 8'hDF;
-  6'd28: val = 8'h10; // Sender IP (Made up)
-  6'd29: val = 8'hDF;
-  6'd30: val = 8'hDE;
-  6'd31: val = 8'hAD;
-  6'd32: val = 8'h00; // Target MAC (anyone)
-  6'd33: val = 8'h00;
-  6'd34: val = 8'h00;
-  6'd35: val = 8'h00;
-  6'd36: val = 8'h00;
-  6'd37: val = 8'h00;
-  6'd38: val = 8'hff; // Target IP (anyone)
-  6'd39: val = 8'hff;
-  6'd40: val = 8'hff;
-  6'd41: val = 8'hff;
-  6'd42: val = 8'h00; // (Trailer begin)
-  6'd43: val = 8'h00;
-  6'd44: val = 8'h00;
-  6'd45: val = 8'h00;
-  6'd46: val = 8'h00;
-  6'd47: val = 8'h00;
-  6'd48: val = 8'h00;
-  6'd49: val = 8'h00;
-  6'd50: val = 8'h00;
-  6'd51: val = 8'h00;
-  6'd52: val = 8'h00;
-  6'd53: val = 8'h00;
-  6'd54: val = 8'h00;
-  6'd55: val = 8'h00;
-  6'd56: val = 8'h00;
-  6'd57: val = 8'h00;
-  6'd58: val = 8'h00;
-  6'd59: val = 8'h00; // END OF PACKET
-
-  // CRC for this packet can be calculated here:
-  // https://crccalc.com/?crc=ff+ff+ff+ff+ff+ff++06+e0+4c+DF+DF+DF++08+06++00+01++00+00++06++04++00+01++06+e0+4c+DF+DF+DF++10+20+DF+DF++00+00+00+00+00+00++ff+ff+ff+ff++00+00+00+00+00+00+00+00+00+00+00+00+00+00+00+00&method=crc32&datatype=hex&outtype=0
-  // This needs to be sent LSByte (least significant byte) first
-  // THIS IS NO LONGER CORRECT!!!
-  6'd60: val = 8'h7B;
-  6'd61: val = 8'h26;
-  6'd62: val = 8'hB3;
-  6'd63: val = 8'hF1;
-
-  default: val = 8'hff;
-  endcase
-
-endmodule // data_packet
-localparam LAST_DATA_BYTE = 6'd59; // plus 4 for CRC
-localparam LAST_CRC_BYTE = 6'd63;
-
-module rgmii_tx /* #(
-  // No parameters, yet
-) */ (
+module rgmii_tx #(
+  parameter BUFFER_NUM_ENTRY_BITS = 3, // 8 entries, i.e. 16kB RAM
+  parameter BUFFER_ENTRY_SZ = 11, // 2kB = 11 bits per buffer entry
+  // Total RAM size
+  parameter BUFFER_SZ = BUFFER_NUM_ENTRY_BITS + BUFFER_ENTRY_SZ,
+  // FIFO depth is 2 ^ BUFFER_SIZE_BITS long too
+  // FIFO entries are {buffer, length}
+  parameter FIFO_WIDTH = BUFFER_SZ,
+  parameter FIFO_RD_LATENCY = 2,
+  parameter RAM_RD_LATENCY = 2
+) (
   // Our appropriate speed clock input (copied to output)
-  input  logic tx_clk,
+  input  logic clk_tx,
   input  logic reset,
 
   // Should we transmit data in DDR?
   // This is only used for 1000
   input  logic ddr_tx, // SYNCHRONIZED (but should be very slow changing)
-  // Should we send something?
-  input  logic activate, // SYNCHRONIZED
+
   // Are we currently sending something?
   output logic busy,
 
   // RGMII OUTPUTS ///////////////////////
   // Our generated appropriate speed clock output
-  output logic gtx_clk,
+  output logic gclk_tx,
   // The data outputs in DDR mode:
   // Send H while the clock is high [3:0]
   // Send L while the clock is low [7:4]
@@ -133,6 +54,16 @@ module rgmii_tx /* #(
   output logic tx_ctl_h, // TX_EN
   output logic tx_ctl_l,  // TX_ERR XOR TX_EN
 
+  // FIFO & RAM Read Ports ////////////////
+  // RAM reader - synchronous to clk_tx
+  output logic [BUFFER_SZ-1:0] ram_rd_addr, // Read address
+  output logic           [7:0] ram_rd_data, // Read data output
+
+  // FIFO reader - synchronous to clk_tx
+  input  logic                  fifo_rd_empty,
+  output logic                  fifo_rd_req,
+  input  logic [FIFO_WIDTH-1:0] fifo_rd_data,
+
   ////////////////////////////////////////////////////
   // Debugging outputs
   output logic [31:0] crc_out
@@ -140,10 +71,11 @@ module rgmii_tx /* #(
 
 // Our sending state machine
 localparam S_IDLE = 3'd0,
-           S_PREAMBLE = 3'd1, // 7 bytes (Preamble)
-           S_SFD = 3'd2,      // 1 byte, (Start Frame Delimiter)
-           S_DATA = 3'd3,     // 14 bytes Ethernet Header header, 46+ bytes data
-           S_FCS = 3'd4;      // 4 byte CRC (Frame Check Sequence)           
+           S_READ_FIFO = 3'd1,
+           S_PREAMBLE = 3'd2, // 7 bytes (Preamble)
+           S_SFD = 3'd3,      // 1 byte, (Start Frame Delimiter)
+           S_DATA = 3'd4,     // 14 bytes Ethernet Header header, 46+ bytes data
+           S_FCS = 3'd5;      // 4 byte CRC (Frame Check Sequence)           
 logic [2:0] state = S_IDLE;
 
 localparam NIBBLE_LOW = 1'b0,
@@ -159,11 +91,9 @@ localparam BYTES_PREAMBLE = 8'b1010_1010;
 localparam BYTES_SFD      = 8'b1010_1011;
 
 localparam SYNC_LEN = 2;
-logic [(SYNC_LEN - 1):0] syncd_activate;
 logic [(SYNC_LEN - 1):0] syncd_ddr_tx;
-logic real_activate;
 logic real_ddr_tx;
-// Registered real_ddr_tx when we become activated
+// Registered real_ddr_tx when we become activated by an un-empty FIFO
 logic txn_ddr;
 
 // Our actual low-level logic registered signals for transmit enable & error
@@ -185,11 +115,6 @@ localparam CRC_XOR_OUT = 32'hFFFF_FFFF;
 // fixed number
 localparam CRC_CHECK = 32'hCBF4_3926;
 
-data_packet data_packet (
-  .addr(count[5:0]),
-  .val(current_data)
-);
-
 // Combinational calculation of the next CRC given current one.
 logic [31:0] next_crc;
 crc32_8bit crc_byte_calc(
@@ -199,10 +124,9 @@ crc32_8bit crc_byte_calc(
 );
 
 always_comb begin
-  gtx_clk = tx_clk;
+  gclk_tx = clk_tx;
   tx_ctl_h = tx_en;
   tx_ctl_l = tx_en ^ tx_err;
-  real_activate = syncd_activate[SYNC_LEN - 1];
   real_ddr_tx = syncd_ddr_tx[SYNC_LEN - 1];
 
   tx_data_h = d_h;
@@ -213,13 +137,86 @@ always_comb begin
 end
 
 // Synchronizer
-always_ff @(posedge tx_clk) begin
-  syncd_activate <= {syncd_activate[(SYNC_LEN - 2):0], activate};
-  syncd_ddr_tx   <= {syncd_ddr_tx  [(SYNC_LEN - 2):0], ddr_tx};
+always_ff @(posedge clk_tx) begin
+  syncd_ddr_tx <= {syncd_ddr_tx  [(SYNC_LEN - 2):0], ddr_tx};
 end // synchronizer
 
+// Data saved from the most recent FIFO read
+logic [FIFO_WIDTH-1:0] saved_fifo;
+// Broken out data from the above (read only)
+logic [BUFFER_NUM_ENTRY_BITS-1:0] cur_buf_num;
+logic [BUFFER_ENTRY_SZ-1:0] cur_buf_len;
+
+assign {cur_buf_num, cur_buf_len} = saved_fifo;
+
+// The last byte index we will be on when we stop sending data
+// (which will be cur_buf_len - 1).
+logic [BUFFER_ENTRY_SZ-1:0] last_data_byte;
+
+// Current byte position in the RAM read for current buffer
+logic [BUFFER_ENTRY_SZ-1:0] rd_pos;
+
+assign ram_rd_addr = {cur_buf_num, rd_pos};
+
+// RAM Reader
+// The puropse of this little state machine is to have the bytes ready
+// to send in current_data when it needs to be read by the main
+// state machine, specifically S_DATA.
+// This means we need to start reading during S_PREAMBLE or
+// possibly S_SFD, and read every other cycle if we're not doing
+// DDR sends since we send one nibble each time.
+// Use: txn_ddr, state, count, nibble
+// NOTE: fifo_rd_req is handled by the main state machine;
+// it's set when it leaves S_IDLE and immediately reset in the next state
+// (S_PREAMBLE). We need to read the FIFO after the proper amount of latency
+// and save it for later.
+always_ff @(posedge clk_tx) begin: ram_reader
+  if (!reset) begin: ram_reader_not_reset
+
+    // Save our fifo data so we can start reading from RAM
+    if (state == S_PREAMBLE && count == FIFO_RD_LATENCY) begin: read_fifo
+      saved_fifo <= fifo_rd_data;
+      rd_pos <= 0;
+    end: read_fifo
+
+    // First do this for non-DDR (1000)
+    if (txn_ddr) begin: ddr_ram_reader
+
+      if (state == S_PREAMBLE || state == S_SFD) begin: read_first_bytes
+        // Count goes from 0 to 7. 8 would be the first byte of data.
+        // If the latency was 1, we'd read on 7, if it were 2, we'd read on 6,
+        // but also on 7. We have to read each cycle.
+        if (count >= 7 - RAM_RD_LATENCY + 1) begin
+          rd_pos <= rd_pos + 1;
+          // RAM read enable is always enabled
+          current_data <= ram_rd_data;
+          // Save where we will stop reading from RAM
+          last_data_byte <= cur_buf_len - 1'd1;
+        end
+      end: read_first_bytes
+
+      if (state == S_DATA) begin: read_remaining_bytes
+        // Continue reading bytes, we're now fully pipelined,
+        // from the RAM. When we read too far, that's fine, we can ignore it.
+        // once we're out of S_DATA, it will stop.
+        rd_pos <= rd_pos + 1;
+        // RAM read enable is always enabled
+        current_data <= ram_rd_data;
+      end: read_remaining_bytes
+
+    end: ddr_ram_reader else begin: sdr_ram_reader
+
+      // FIXME: CODE ME
+
+    end: sdr_ram_reader
+  
+  end: ram_reader_not_reset
+end: ram_reader
+
+
+
 // State machine
-always_ff @(posedge tx_clk) begin
+always_ff @(posedge clk_tx) begin
 
   if (reset) begin /////////////////////////////////////////////////////
 
@@ -227,6 +224,7 @@ always_ff @(posedge tx_clk) begin
     tx_err <= '0;
     state <= S_IDLE;
     busy <= '1; // Should we be "busy" during reset? Sure, why not. Confirm!
+    fifo_rd_req <= '0;
   
   end else begin ///////////////////////////////////////////////////////
 
@@ -239,16 +237,18 @@ always_ff @(posedge tx_clk) begin
         tx_en <= '0;
         tx_err <= '0;
         busy <= '0;
+        fifo_rd_req <= '0;
 
         // FIXME: Add an interframe delay per spec, before activation.
         // So, let's do this right when we become idle.
-        if (real_activate) begin
+        if (!fifo_rd_empty) begin
           // We need to send a packet
           txn_ddr <= real_ddr_tx;
           busy <= '1;
           state <= S_PREAMBLE;
           nibble <= NIBBLE_LOW;
           count <= '0;
+          fifo_rd_req <= '1;
         end
 
       end
@@ -258,6 +258,8 @@ always_ff @(posedge tx_clk) begin
 
         tx_en <= '1;
         tx_err <= '0; // Not sure when we would ever set this
+        fifo_rd_req <= '0; // Read only exactly one entry
+        count <= count + 1'd1; // We will carry the count into S_SFD
 
         if (!txn_ddr) begin
           // Review Table 22-3 in 802.3-2022 for MII (same as RGMII with 4 tx pins)
@@ -265,7 +267,6 @@ always_ff @(posedge tx_clk) begin
           // for 14 nibbles
           d_h <= 4'b0101;
           d_l <= 4'b0101;
-          count <= count + 1'd1;
           // No matter what I use for this count (12, 13, 14, 18, 123)
           // it seems to accept the packet on the other end correctly.
           if (count == 13) begin
@@ -279,7 +280,6 @@ always_ff @(posedge tx_clk) begin
 
           d_h <= 4'b0101;
           d_l <= 4'b0101;
-          count <= count + 1'd1;
           if (count == 6) begin
             // We are sending our 7th byte, second nibble, move on to SFP
             state <= S_SFD;
@@ -341,7 +341,7 @@ always_ff @(posedge tx_clk) begin
             // Second half of our byte
             count <= count + 1'd1;
             // Are we done with data?
-            if (count == LAST_DATA_BYTE) begin
+            if (count == last_data_byte) begin
               state <= S_FCS;
               count <= 0;
             end
@@ -358,7 +358,7 @@ always_ff @(posedge tx_clk) begin
           nibble <= ~nibble;
           count <= count + 1'd1;
           // Are we done sending?
-          if (count == LAST_DATA_BYTE) begin
+          if (count == last_data_byte) begin
             state <= S_FCS;
             count <= 0;
           end

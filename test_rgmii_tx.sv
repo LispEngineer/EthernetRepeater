@@ -1,5 +1,7 @@
 // Copyright 2023 ⓒ Douglas P. Fields, Jr. All Rights Reserved.
 
+// FIXME: Update for new rgmii_tx and its top
+
 `ifdef IS_QUARTUS // Defined in Assignments -> Settings -> ... -> Verilog HDL Input
 // This doesn't work in Questa/ModelSim for some reason.
 `default_nettype none // Disable implicit creation of undeclared nets
@@ -42,7 +44,6 @@ rgmii_tx dut (
   .tx_clk(clk),
   .reset('0),
   .ddr_tx('1), // Test with DDR now
-  .activate(activate),
   .busy(busy),
   .gtx_clk(gtx_clk),
   .tx_data_h(tx_data_h),

@@ -121,6 +121,9 @@ added by HSMC card. Some useful features:
 
 # Current Functionality
 
+**IMPORTANT**! The rgmii_tx/_top modules are currently being coded and the whole
+project does not compile.
+
 * Ethernet MII Management Interface (MDC/MDIO)
   * Simulation tested in Questa
   * Tested on real PHY for reading & writing manually
@@ -937,3 +940,9 @@ This is now working - see `lcd_module` - but doesn't do initialization yet.
 * [Example Verilog for HD44780](https://circuit4us.medium.com/play-with-16x2-lcd-display-ca70a047af36)
 * [Another example](http://robotics.hobbizine.com/fpgalcd.html) - good one
 * [Xilinx Example](https://docs.xilinx.com/v/u/en-US/ug330)
+
+
+
+# Miscellaneous Ethernet Devices
+
+* [BotBlox](https://botblox.io/) makes some interesting Ethernet stuff

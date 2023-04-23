@@ -143,10 +143,14 @@ module ethernet_trx_88e1111 #(
   ///////////////////////////////////////////////////
   // TX API 
 
+  // FIXME: Remove the tx_activate
   // Should we send something?
   input  logic tx_activate, // SYNCHRONIZED
   // Are we currently sending something?
   output logic tx_busy,
+
+  // FIXME: Export the send RAM & FIFO out of this module
+
 
   ////////////////////////////////////////////////////
   // TX Debugging outputs
@@ -343,7 +347,8 @@ tx_clock_manager tx_clock_manager_inst (
   .changing(tx_changing)
 );
 
-
+// FIXME: Update this with the new rgmii_tx_top
+// FIXME: Export the send RAM & FIFO out of this module
 rgmii_tx ethernet_tx (
   .tx_clk(clock_eth_tx),
   .reset(reset_tx), // This reset_tx will be one cycle later than reset if we don't do || reset, which is probably okay
