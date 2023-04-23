@@ -21,11 +21,13 @@ logic  reset;
 ////////////////////////////////////////////////////////////////////////////////////
 
 // generate clock to sequence tests
+localparam CLOCK_DUR = 8;
+localparam HALF_CLOCK_DUR = CLOCK_DUR / 2;
 always begin
   // 2.5 MHz = 200 (one full cycle every 400 ticks at 1ns per tick per above)
   // 25 MHz = 20
   // 125 MHz = 4
-  #200 clk <= ~clk;
+  #(HALF_CLOCK_DUR) clk <= ~clk;
 end
 
 logic activate = '0;
@@ -40,16 +42,37 @@ logic gtx_clk;
 logic [31:0] crc;
 logic [31:0] crc_final; // XOR'd with the final value
 
-rgmii_tx dut (
+logic        ram_wr_ena;
+logic [13:0] ram_wr_addr;
+logic [7:0]  ram_wr_data;
+logic        fifo_aclr;
+logic        fifo_wr_full;
+logic        fifo_wr_req;
+logic [13:0] fifo_wr_data;
+
+rgmii_tx_top dut (
   .tx_clk(clk),
   .reset('0),
   .ddr_tx('1), // Test with DDR now
   .busy(busy),
+
   .gtx_clk(gtx_clk),
   .tx_data_h(tx_data_h),
   .tx_data_l(tx_data_l),
   .tx_ctl_h(tx_ctl_h),
   .tx_ctl_l(tx_ctl_l),
+
+  .clk_ram_wr(clk),
+  .ram_wr_ena,
+  .ram_wr_addr,
+  .ram_wr_data,
+
+  .clk_fifo_wr(clk),
+  .fifo_aclr,
+  .fifo_wr_full,
+  .fifo_wr_req,
+  .fifo_wr_data,
+
   .crc_out(crc)
 );
 
@@ -67,9 +90,13 @@ initial begin
   reset <= 1'b1; 
   #22; reset <= 1'b0;
 
-  activate <= '1;
-  #2000;
-  activate <= '0;
+  #78;
+
+  // Pulse FIFO for one cycle
+  fifo_wr_req <= '1;
+  fifo_wr_data <= {3'b0, 11'd60}; // Buffer # then buffer length
+  #(CLOCK_DUR); 
+  fifo_wr_req <= '0;
 
   // Stop the simulation at appropriate point
   #64000;

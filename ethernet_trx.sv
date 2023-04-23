@@ -25,6 +25,8 @@ module ethernet_trx_88e1111 #(
 
   // FIFO depth is 2 ^ BUFFER_SIZE_BITS long too
   parameter RX_FIFO_WIDTH = 16,
+  // TX FIFO width = buffer bits + entry size = RAM size
+  parameter TX_FIFO_WIDTH = BUFFER_SZ,
 
   // Pass to mii_management_interface - see that for description
   parameter MII_CLK_DIV = 32,
@@ -143,14 +145,25 @@ module ethernet_trx_88e1111 #(
   ///////////////////////////////////////////////////
   // TX API 
 
-  // FIXME: Remove the tx_activate
+  // FIXME: Remove the tx_activate with the new rgmii tx top level
   // Should we send something?
   input  logic tx_activate, // SYNCHRONIZED
   // Are we currently sending something?
   output logic tx_busy,
 
-  // FIXME: Export the send RAM & FIFO out of this module
+  // Export the tx RAM & FIFO out of this module
+  // RAM writer inputs
+  input  logic                 clk_tx_ram_wr,
+  input  logic                 tx_ram_wr_ena,
+  input  logic [BUFFER_SZ-1:0] tx_ram_wr_addr,
+  input  logic           [7:0] tx_ram_wr_data,
 
+  // FIFO writer inputs
+  input  logic                  clk_tx_fifo_wr,
+  input  logic                  tx_fifo_aclr,
+  input  logic                  tx_fifo_wr_full,
+  input  logic                  tx_fifo_wr_req,
+  input  logic [TX_FIFO_WIDTH-1:0] tx_fifo_wr_data,
 
   ////////////////////////////////////////////////////
   // TX Debugging outputs
@@ -347,21 +360,30 @@ tx_clock_manager tx_clock_manager_inst (
   .changing(tx_changing)
 );
 
-// FIXME: Update this with the new rgmii_tx_top
-// FIXME: Export the send RAM & FIFO out of this module
-rgmii_tx ethernet_tx (
-  .tx_clk(clock_eth_tx),
+rgmii_tx_top ethernet_tx (
+  .clk_tx(clock_eth_tx),
   .reset(reset_tx), // This reset_tx will be one cycle later than reset if we don't do || reset, which is probably okay
   .ddr_tx(tx_speed_1000), // 0 for 10/100, 1 for 1000
 
-  .activate(tx_activate),
   .busy(tx_busy),
 
+  // Ethernet PHY interface
   .gtx_clk(clk_gtx), // Should be the same as tx_clk input above
   .tx_data_h(tx_data_h),
   .tx_data_l(tx_data_l),
   .tx_ctl_h(tx_ctl_h),
   .tx_ctl_l(tx_ctl_l),
+
+  // Transmit RAM and FIFO that we can (only) write to
+  .clk_ram_wr(clk_tx_ram_wr),
+  .ram_wr_ena(tx_ram_wr_ena),
+  .ram_wr_addr(tx_ram_wr_addr),
+  .ram_wr_data(tx_ram_wr_data),
+  .clk_fifo_wr(clk_tx_fifo_wr),
+  .fifo_aclr(tx_fifo_aclr),
+  .fifo_wr_full(tx_fifo_wr_full),
+  .fifo_wr_req(tx_fifo_wr_req),
+  .fifo_wr_data(tx_fifo_wr_data),
 
   // Debug ports
   .crc_out(tx_crc_out)

@@ -181,6 +181,10 @@ project does not compile.
 
 ## Next Steps
 
+* Generic synchronizer module for all synchronizers:
+  * Parameters: length, width
+  * Add SDC controls to ensure that everything in there is synchronized
+
 * LCD Manager
   * Power-up sequence required
 

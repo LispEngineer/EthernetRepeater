@@ -56,6 +56,7 @@ module rgmii_tx #(
 
   // FIFO & RAM Read Ports ////////////////
   // RAM reader - synchronous to clk_tx
+  output logic                 ram_rd_ena,
   output logic [BUFFER_SZ-1:0] ram_rd_addr, // Read address
   output logic           [7:0] ram_rd_data, // Read data output
 
@@ -187,22 +188,26 @@ always_ff @(posedge clk_tx) begin: ram_reader
         // If the latency was 1, we'd read on 7, if it were 2, we'd read on 6,
         // but also on 7. We have to read each cycle.
         if (count >= 7 - RAM_RD_LATENCY + 1) begin
+          ram_rd_ena <= '1;
           rd_pos <= rd_pos + 1;
           // RAM read enable is always enabled
           current_data <= ram_rd_data;
           // Save where we will stop reading from RAM
           last_data_byte <= cur_buf_len - 1'd1;
         end
-      end: read_first_bytes
 
-      if (state == S_DATA) begin: read_remaining_bytes
+      end: read_first_bytes else if (state == S_DATA) begin: read_remaining_bytes
         // Continue reading bytes, we're now fully pipelined,
         // from the RAM. When we read too far, that's fine, we can ignore it.
         // once we're out of S_DATA, it will stop.
+        ram_rd_ena <= '1;
         rd_pos <= rd_pos + 1;
         // RAM read enable is always enabled
         current_data <= ram_rd_data;
-      end: read_remaining_bytes
+
+      end: read_remaining_bytes else begin: done_ram_reading
+        ram_rd_ena <= '0;
+      end: done_ram_reading
 
     end: ddr_ram_reader else begin: sdr_ram_reader
 

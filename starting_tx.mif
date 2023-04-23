@@ -1,0 +1,23 @@
+DEPTH = 16384; -- 8 x 2KB
+WIDTH = 8;    -- chracter width 8
+ADDRESS_RADIX = HEX;
+DATA_RADIX = HEX;
+
+CONTENT BEGIN
+
+0000: 00 11 22 33 44 55;
+0006: FF EE DD CC BB AA;
+000C: 08 06; -- Packet type (ARP)
+000E: 00 01; -- ARP START - ARP Hardware Type
+0010: 08 00;  -- Protocol - IPv4
+0012: 06;  -- Hardware size: 6
+0013: 04;  -- Protocol size: 4
+0014: 00 01; -- Opcode: 0x0001 (Request)
+0016: 06 e0 4c DF DF DF;  -- Sender MAC (made up) 
+001C: 10 DF DE AD;  -- Sender IP (Made up) 
+0020: 00 00 00 00 00 00; -- Target MAC (anyone)
+0026: ff ff ff ff;  -- Target IP (anyone) 
+-- Add trailer of whatever length necessary (e.g., 60)
+
+
+END;

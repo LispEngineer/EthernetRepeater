@@ -1,0 +1,7 @@
+set_global_assignment -name IP_TOOL_NAME "RAM: 2-PORT"
+set_global_assignment -name IP_TOOL_VERSION "21.1"
+set_global_assignment -name IP_GENERATED_DEVICE_FAMILY "{Cyclone IV E}"
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) "tx_ram_buffer_registered.v"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "tx_ram_buffer_registered.bsf"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "tx_ram_buffer_registered_inst.v"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "tx_ram_buffer_registered_bb.v"]
