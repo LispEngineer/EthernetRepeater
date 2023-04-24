@@ -92,7 +92,7 @@ initial begin
 
   // Pulse FIFO for one cycle
   fifo_wr_req <= '1;
-  fifo_wr_data <= {3'b0, 11'd60}; // Buffer # then buffer length
+  fifo_wr_data <= {3'b0, 11'd60}; // Buffer # then buffer length - Buffer 1 is a test pattern
   #(CLOCK_DUR); 
   fifo_wr_req <= '0;
 

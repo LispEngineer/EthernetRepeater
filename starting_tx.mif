@@ -5,19 +5,27 @@ DATA_RADIX = HEX;
 
 CONTENT BEGIN
 
-0000: 00 11 22 33 44 55;
-0006: FF EE DD CC BB AA;
-000C: 08 06; -- Packet type (ARP)
-000E: 00 01; -- ARP START - ARP Hardware Type
-0010: 08 00;  -- Protocol - IPv4
-0012: 06;  -- Hardware size: 6
-0013: 04;  -- Protocol size: 4
-0014: 00 01; -- Opcode: 0x0001 (Request)
-0016: 06 e0 4c DF DF DF;  -- Sender MAC (made up) 
-001C: 10 DF DE AD;  -- Sender IP (Made up) 
-0020: 00 00 00 00 00 00; -- Target MAC (anyone)
-0026: ff ff ff ff;  -- Target IP (anyone) 
+-- Slot 0: ARP request
+[0000..0005]: 00 11 22 33 44 55;
+[0006..000B]: FF EE DD CC BB AA;
+[000C..000D]: 08 06; -- Packet type (ARP)
+[000E..000F]: 00 01; -- ARP START - ARP Hardware Type
+[0010..0011]: 08 00;  -- Protocol - IPv4
+ 0012       : 06;  -- Hardware size: 6
+ 0013       : 04;  -- Protocol size: 4
+[0014..0015]: 00 01; -- Opcode: 0x0001 (Request)
+[0016..001B]: 06 e0 4c DF DF DF;  -- Sender MAC (made up) 
+[001C..001F]: 10 DF DE AD;  -- Sender IP (Made up) 
+[0020..0025]: 00 00 00 00 00 00; -- Target MAC (anyone)
+[0026..0029]: ff ff ff ff;  -- Target IP (anyone) 
 -- Add trailer of whatever length necessary (e.g., 60)
+
+-- Slot 1: Testing values
+0800: 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF 00;
+0810: 01 23 45 67 89 AB CD EF 01 32 54 76 98 BA DC FE;
+0820: 12 34 56 78 9A BC DE F0 DF 15 C0 01 55 77 FF 00;
+0830: FE DC BA 98 76 54 32 10 01 23 45 67 89 AB CD EF;
+-- Add trailer of whatever length necessary (0 necessary in this case)
 
 
 END;

@@ -546,6 +546,13 @@ Setting up Quartus to load the Test Harness in Questa
   * This is a long command in `VSIM ##>` prompt
 * Then you can type at the `VSIM ##>` prompt `restart -f ; run -all`
 
+## Issues with QuestaSim
+
+* Questa does not support `.mif` memory initialization files! It needs `.hex` files.
+  * [Quartus](https://www.intel.com/content/www/us/en/support/programmable/articles/000080066.html)
+    says it will convert the file, but my version of Quartus does not do it.
+
+
 ## SignalTap
 
 * To disable SignalTap again, go to Assignments -> Settings -> SignalTap and unclick Enable

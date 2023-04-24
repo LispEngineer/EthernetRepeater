@@ -159,6 +159,9 @@ logic [BUFFER_ENTRY_SZ-1:0] rd_pos;
 
 assign ram_rd_addr = {cur_buf_num, rd_pos};
 
+// We don't increment our counter on our very first read
+logic first_read;
+
 // RAM Reader
 // The puropse of this little state machine is to have the bytes ready
 // to send in current_data when it needs to be read by the main
@@ -179,6 +182,7 @@ always_ff @(posedge clk_tx) begin: ram_reader
     if (state == S_PREAMBLE && count == FIFO_RD_LATENCY) begin: read_fifo
       saved_fifo <= fifo_rd_data;
       rd_pos <= 0;
+      first_read <= '1;
     end: read_fifo
 
     // First do this for non-DDR (1000)
@@ -188,9 +192,13 @@ always_ff @(posedge clk_tx) begin: ram_reader
         // Count goes from 0 to 7. 8 would be the first byte of data.
         // If the latency was 1, we'd read on 7, if it were 2, we'd read on 6,
         // but also on 7. We have to read each cycle.
-        if (count >= 7 - RAM_RD_LATENCY + 1) begin
+        // Add 1 to the RAM READ LATENCY because we then save it into "current data"
+         if (count >= 7 - (RAM_RD_LATENCY + 1)) begin
           ram_rd_ena <= '1;
-          rd_pos <= rd_pos + 1'd1;
+          if (first_read)
+            first_read <= '0;
+          else
+            rd_pos <= rd_pos + 1'd1;
           // RAM read enable is always enabled
           current_data <= ram_rd_data;
           // Save where we will stop reading from RAM
