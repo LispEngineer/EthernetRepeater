@@ -24,7 +24,7 @@ module rgmii_tx #(
   // FIFO depth is 2 ^ BUFFER_SIZE_BITS long too
   // FIFO entries are {buffer, length}
   parameter FIFO_WIDTH = BUFFER_SZ,
-  parameter FIFO_RD_LATENCY = 2,
+  parameter FIFO_RD_LATENCY = 2, // This may actually be 1
   parameter RAM_RD_LATENCY = 2
 ) (
   // Our appropriate speed clock input (copied to output)
@@ -72,11 +72,10 @@ module rgmii_tx #(
 
 // Our sending state machine
 localparam S_IDLE = 3'd0,
-           S_READ_FIFO = 3'd1,
-           S_PREAMBLE = 3'd2, // 7 bytes (Preamble)
-           S_SFD = 3'd3,      // 1 byte, (Start Frame Delimiter)
-           S_DATA = 3'd4,     // 14 bytes Ethernet Header header, 46+ bytes data
-           S_FCS = 3'd5;      // 4 byte CRC (Frame Check Sequence)           
+           S_PREAMBLE = 3'd1, // 7 bytes (Preamble)
+           S_SFD = 3'd2,      // 1 byte, (Start Frame Delimiter)
+           S_DATA = 3'd3,     // 14 bytes Ethernet Header header, 46+ bytes data
+           S_FCS = 3'd4;      // 4 byte CRC (Frame Check Sequence)           
 logic [2:0] state = S_IDLE;
 
 localparam NIBBLE_LOW = 1'b0,
@@ -159,8 +158,14 @@ logic [BUFFER_ENTRY_SZ-1:0] rd_pos;
 
 assign ram_rd_addr = {cur_buf_num, rd_pos};
 
-// We don't increment our counter on our very first read
+// We don't increment our counter on our very first read in DDR
 logic first_read;
+
+// Are we reading from the RAM for SDR sending right now or not?
+// If so, we read another byte every other cycle.
+logic ram_read_sdr_sending = '0;
+
+////////////////////////////////////////////////////////////////////////////////////////////
 
 // RAM Reader
 // The puropse of this little state machine is to have the bytes ready
@@ -182,7 +187,7 @@ always_ff @(posedge clk_tx) begin: ram_reader
     if (state == S_PREAMBLE && count == FIFO_RD_LATENCY) begin: read_fifo
       saved_fifo <= fifo_rd_data;
       rd_pos <= 0;
-      first_read <= '1;
+      first_read <= '1; // Will become 0 after we do our first RAM read, to allow pos 0 to be read
     end: read_fifo
 
     // First do this for non-DDR (1000)
@@ -199,7 +204,6 @@ always_ff @(posedge clk_tx) begin: ram_reader
             first_read <= '0;
           else
             rd_pos <= rd_pos + 1'd1;
-          // RAM read enable is always enabled
           current_data <= ram_rd_data;
           // Save where we will stop reading from RAM
           last_data_byte <= cur_buf_len - 1'd1;
@@ -219,21 +223,73 @@ always_ff @(posedge clk_tx) begin: ram_reader
       end: done_ram_reading
 
     end: ddr_ram_reader else begin: sdr_ram_reader
+      // Handle 10/100 speed, where we send one nibble every cycle,
+      // so we need to change what we're reading only every other
+      // cycle.
+      // During Preamble/SFD, it starts at count == 0.
+      // Start reading at the exact right time, then read a byte every
+      // OTHER cycle, and stop reading around the right time, and all will
+      // be well.
 
-      // FIXME: CODE ME
-      ram_rd_ena <= '0;
-      rd_pos <= '0;
+      if (ram_read_sdr_sending) begin: continue_sdr_ram_reading
+
+        // Always save the RAM output (or do we need to do it only when we expect output?)
+        current_data <= ram_rd_data;
+
+        // Toggle our read every other cycle (and advance the read location)
+        if (ram_rd_ena) begin
+          // Do nothing this cycle
+          ram_rd_ena <= '0;
+        end else begin
+          // Read the next byte
+          ram_rd_ena <= '1;
+          rd_pos <= rd_pos + 1'd1;
+        end
+
+        // Should we stop our SDR RAM reading efforts?
+        if ((state != S_PREAMBLE && state != S_SFD && state != S_DATA) ||
+            (state == S_DATA && count == last_data_byte)) begin
+          // We shouldn't be reading in these other states
+          // and we should stop reading by the end of sending data
+          ram_rd_ena <= '0;
+          ram_read_sdr_sending <= '0;
+        end
+
+      end: continue_sdr_ram_reading else begin: possibly_begin_sdr_ram_reading
+
+        // We need to start reading from RAM, doing it every other cycle,
+        // until we're done sending the packet.
+        // Start at the exact time for the first byte to be in current_data
+        // when it needs to be sent.
+        // Add 1 to the RAM READ LATENCY because we then save it into "current data"
+
+        // $display("In possibly_begin_sdr_ram_reading, state: ", state, " count: ", count, " time: ", $time);
+
+        if ((state == S_PREAMBLE || state == S_SFD) &&
+            (count == (15 - (RAM_RD_LATENCY + 1)))) begin
+          // $display("***** VERY FIRST READ *******, time: ", $time);
+          // Our very first read
+          rd_pos <= '0;
+          ram_rd_ena <= '1;
+          ram_read_sdr_sending <= '1;
+          // Save where we will stop reading from RAM
+          last_data_byte <= cur_buf_len - 1'd1;
+        end
+
+      end: possibly_begin_sdr_ram_reading
 
     end: sdr_ram_reader
   
   end: ram_reader_not_reset else begin: ram_reader_reset
 
-    // TODO: 
+    ram_rd_ena <= '0;
+    ram_read_sdr_sending <= '0;
+    first_read <= '0; // Probably unnecessary
 
   end: ram_reader_reset
 end: ram_reader
 
-
+////////////////////////////////////////////////////////////////////////////////////////////
 
 // State machine
 always_ff @(posedge clk_tx) begin
@@ -287,6 +343,7 @@ always_ff @(posedge clk_tx) begin
           // for 14 nibbles
           d_h <= 4'b0101;
           d_l <= 4'b0101;
+          nibble <= ~nibble; // We do this for the benefit of the RAM Reader as it is not used locally
           // No matter what I use for this count (12, 13, 14, 18, 123)
           // it seems to accept the packet on the other end correctly.
           if (count == 13) begin
@@ -316,6 +373,7 @@ always_ff @(posedge clk_tx) begin
           // SFD is txd[0] = 1, txd[1] = 0, txd[2] = 1, txd[3] = 0
           // then   txd[0] = 1, txd[1] = 0, txd[2] = 1, txd[3] = 1
           nibble <= ~nibble;
+          count <= count + 1'd1; // Do this for the benefit of the RAM Reader above
           if (!nibble) begin
             // First nibble is same as preamble
             d_h <= 4'b0101;

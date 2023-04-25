@@ -23,18 +23,20 @@ add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/saved_fifo
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/cur_buf_num
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/cur_buf_len
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/last_data_byte
-add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/rd_pos
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/crc_out
 add wave -noupdate /test_rgmii_tx/crc_final
 add wave -noupdate -divider {RAM/FIFO Reader}
+add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/rd_pos
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/ram_rd_ena
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/ram_rd_addr
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/ram_rd_data
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/fifo_rd_empty
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/fifo_rd_req
 add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/fifo_rd_data
+add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/first_read
+add wave -noupdate /test_rgmii_tx/dut/rgmii_tx_inst/ram_read_sdr_sending
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {681614 ps} 0}
+WaveRestoreCursors {{Cursor 1} {748447 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 145
 configure wave -valuecolwidth 95
@@ -50,4 +52,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {872712 ps}
+WaveRestoreZoom {0 ps} {990515 ps}

@@ -140,8 +140,10 @@ project does not compile.
   * Automatically adjusts transmit speed based on received in-band data speed information
     * Uses a clock multiplexer (takes a few cycles to settle) from Quartus documentation
     * Asserts reset for the transmitter (only) when adjusting clock speed
-  * Sends a fixed packet (a silly ARP request)
-    * Calculates the CRC on the fly and sends it, using [generated HDL](https://bues.ch/cms/hacking/crcgen)
+  * Sends a packet from one of 8 RAM buffers when it gets a FIFO request
+    * Each buffer is 2k long so it can handle any non-jumbo frame
+    * FIFO request says the RAM buffer to use and the packet length
+  * Calculates the CRC on the fly and sends it, using [generated HDL](https://bues.ch/cms/hacking/crcgen)
 
 * RGMII Receive Capability
   * FIFO for putting notifications of fully received packets into
@@ -185,6 +187,9 @@ project does not compile.
   * Parameters: length, width
   * Add SDC controls to ensure that everything in there is synchronized
 
+* Add synchronizers to all reset signals that are not synchronous with
+  the main clock. Or maybe just to all reset signals, period?
+
 * LCD Manager
   * Power-up sequence required
 
@@ -201,18 +206,18 @@ project does not compile.
 * Simple RGMII TX interface
   * Handle [Interpacket Gap](https://en.wikipedia.org/wiki/Interpacket_gap)
     * See 802.3-2022 4.4.2 `interPacketGap` of 96 bits for up to 100Mb/s & 1 Gb/s
-  * Use a RAM with 2048 byte-long packet slots (enough for the usual maximum frame size)
-  * Use a FIFO for queuing sends
-    * Length
-    * RAM slot to send
-    * CRC included (or not)
-    * (Figure out how to parcel out RAM slots)
-      * Maybe start with a FIFO of all N slots filled up
-      * Then as a slot is asked to be sent, re-add it to the FIFO
-      * This can fail badly if someone doesn't send a slot, so maybe not a good idea...
+    * Important as the FIFO could be kept full
+  * Future: Figure out how to parcel out RAM slots
+    * Maybe start with a FIFO of all N slots filled up
+    * Then as a slot is asked to be sent, re-add it to the FIFO
+    * This can fail badly if someone doesn't send a slot, so maybe not a good idea...
   * Add some bus (e.g. AXI4-Lite) for
     * Putting packet data into the transmit RAM slots
     * Adding an entry to the transmit FIFO
+  * Allow RAM writes more than 8 bits at a time so it's faster to copy a packet to
+    transmit from receive RAM for the repeater function.
+    * Use byte masks - but not really necessary since we don't care if we copy "bad"
+      data that won't be sent after the last byte of the packet
 
 * Simple RGMII RX interface
   * Check frame CRC
@@ -297,6 +302,12 @@ project does not compile.
 
 
 ## Known Bugs
+
+* Simulating the RAM-reading requires me to stop using `.mif` files and start
+  using `.hex` files - so I need to convert my RAM initialization to `.hex`.
+  * However, if you use a simple .mif file with just a single byte per line,
+    this seems to work well enough - the first RAM byte may be different from `.mif`
+    file but you can see it in the Questa memory viewer.
 
 * Have an off by one error on receive packet length because it
   uses the final byte write position and not the actual length.

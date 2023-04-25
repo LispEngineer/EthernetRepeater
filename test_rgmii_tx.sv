@@ -21,8 +21,9 @@ logic  reset;
 ////////////////////////////////////////////////////////////////////////////////////
 
 // generate clock to sequence tests
-localparam CLOCK_DUR = 8;
+localparam CLOCK_DUR = 20;
 localparam HALF_CLOCK_DUR = CLOCK_DUR / 2;
+localparam USE_DDR = CLOCK_DUR == 4;
 always begin
   // 2.5 MHz = 200 (one full cycle every 400 ticks at 1ns per tick per above)
   // 25 MHz = 20
@@ -51,7 +52,7 @@ logic [13:0] fifo_wr_data;
 rgmii_tx_top dut (
   .clk_tx(clk),
   .reset('0),
-  .ddr_tx('1), // Test with DDR now
+  .ddr_tx(USE_DDR),
   .busy(busy),
 
   .gtx_clk(gtx_clk),
@@ -71,7 +72,7 @@ rgmii_tx_top dut (
   .fifo_wr_req,
   .fifo_wr_data,
 
-  .crc_out(crc)
+  .crc_out(crc) // The sent CRC is this XOR '1
 );
 
 // Make our DDR "actual output" signals
@@ -97,7 +98,7 @@ initial begin
   fifo_wr_req <= '0;
 
   // Stop the simulation at appropriate point
-  #64000;
+  #5000;
   $display("Ending simulation @ ", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!

@@ -604,7 +604,7 @@ logic last_send_busy = '0;
 logic send_buf = '0; // Which buffer are we sending? (We just using 2 for now)
 
 // TX RAM
-logic        tx_ram_wr_ena = '0;
+logic        tx_ram_wr_ena;
 logic [13:0] tx_ram_wr_addr;
 logic  [7:0] tx_ram_wr_data;
 assign tx_ram_wr_ena = '0; // We never write
