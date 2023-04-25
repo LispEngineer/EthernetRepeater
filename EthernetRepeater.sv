@@ -567,7 +567,6 @@ logic clk_eth_125, clk_eth_25, clk_eth_2p5;
 logic [3:0] tx_data_h, tx_data_l;
 logic tx_ctl_h, tx_ctl_l;
 logic gtx_clk;
-logic send_activate = '0;
 logic send_busy;
 
 assign ENET1_TX_ER = '0; // Not used in RGMII
@@ -602,31 +601,53 @@ ddr_output_1 ddr_output1_rgmii1_tx_ctl (
 //        and provides a low logic level when depressed."
 logic [3:0] last_key_tx = '1;
 logic last_send_busy = '0;
+logic send_buf = '0; // Which buffer are we sending? (We just using 2 for now)
 
-always_ff @(posedge CLOCK_50) begin
+// TX RAM
+logic        tx_ram_wr_ena = '0;
+logic [13:0] tx_ram_wr_addr;
+logic  [7:0] tx_ram_wr_data;
+assign tx_ram_wr_ena = '0; // We never write
+
+// TX FIFO
+logic        tx_fifo_wr_full;
+logic        tx_fifo_wr_req = '0;
+logic [13:0] tx_fifo_wr_data;
+
+always_ff @(posedge CLOCK_50) begin: request_packet_send
   last_key_tx <= KEY;
   last_send_busy <= send_busy;
 
   // TODO: Handle reset
 
+  // Our FIFO needs exactly one cycle to take a value in,
+  // so set the _wr_req only for one cycle exactly.
+  // send_busy will be asserted a few cycles later (probably),
+  // and it's asynchronous to this clock anyway so should be
+  // synchronized... (FIXME)
+
+  tx_fifo_wr_req <= '0; // We are not activating, UNLESS...
   if (!send_busy && last_send_busy) begin
     // We need to handle the completion of a send.
     // Nothing really to do
-
-  end else if (send_busy && send_activate) begin
+  end else if (send_busy && tx_fifo_wr_req) begin
     // Transmit just started
-    send_activate <= '0;
   end else if (send_busy) begin
     // The transmitter is busy, nothing to do
-  end else if (send_activate) begin
+  end else if (tx_fifo_wr_req) begin
     // Do nothing
-  end else if (!send_busy && !send_activate && !KEY[2] && KEY[2] != last_key_tx[2]) begin
+  end else if (!send_busy && !tx_fifo_wr_req && !KEY[2] && KEY[2] != last_key_tx[2]) begin
     // We're not busy, not awaiting activation, and the key was just pressed
     // (remember key down reports logic 0)
-    send_activate <= '1;
+    if (!tx_fifo_wr_full) begin: push_into_tx_fifo
+      tx_fifo_wr_req <= '1;
+      tx_fifo_wr_data <= {2'b00, send_buf, 11'd60}; // Buffer (3 bits) length (11 bits)
+      send_buf <= ~send_buf; // Next time send the other buffer
+    end: push_into_tx_fifo
+
   end
 
-end
+end: request_packet_send
 
 
 // ETHERNET RECEIVER TOP LEVEL ////////////////////////////////////////////////
@@ -781,11 +802,11 @@ ethernet_trx_88e1111 #(
   .MII_PHY_ADDRESS(ENET1_PHY_ADDRESS)
 ) enet1_mac (
   // Clocks //
-  .clk(CLOCK_50),
+  .clk    (CLOCK_50),
   .clk_125(clk_eth_125),
-  .clk_25(clk_eth_25),
+  .clk_25 (clk_eth_25),
   .clk_2p5(clk_eth_2p5),
-  .reset(~KEY[3]),
+  .reset  (~KEY[3]),
 
   // Receiver //
 
@@ -841,8 +862,19 @@ ethernet_trx_88e1111 #(
   .tx_ctl_l,
 
   // TX status
-  .tx_activate(send_activate),
   .tx_busy(send_busy),
+
+  // TX RAM & FIFO
+  .clk_tx_ram_wr(CLOCK_50),
+  .tx_ram_wr_ena,
+  .tx_ram_wr_addr,
+  .tx_ram_wr_data,
+  .clk_tx_fifo_wr(CLOCK_50),
+  .tx_fifo_aclr('0), // We never clear
+  .tx_fifo_wr_full,
+  .tx_fifo_wr_req,
+  .tx_fifo_wr_data,
+
 
   // TX debug signals
   .tx_crc_out(), // NOT connected
