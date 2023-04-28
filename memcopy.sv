@@ -51,9 +51,14 @@ module memcopy #(
 
 assign clk_ram_wr = clk;
 assign clk_ram_rd = clk;
+
+`ifdef IS_QUARTUS
+// QuestaSim complaints about these:
+// ** Error (suppressible): memcopy.sv: (vlog-7061) Variable 'busy' driven in an always_ff block, may not be driven by any other process.
 initial ram_wr_ena = '0;
 initial ram_rd_ena = '0;
 initial busy = '0;
+`endif // IS_QUARTUS
 
 // Algorithm:
 // Three blocks, a reader, a writer and a main state machine.
