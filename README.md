@@ -78,6 +78,13 @@ run the repeater at (the part that copies data between ports).
   * Kintex-7
   * Artix-7
 
+* Handle 3+ ports and build a hub and/or switch
+  * Build a Content Addressable Memory for:
+    * IP to MAC
+    * MAC to switch port
+    * Include age and removing entries by age
+
+
 * Build AXI4 interfaces and multiplexer/switch
 
 **Other Ethernet Applications:**
@@ -574,6 +581,28 @@ Setting up Quartus to load the Test Harness in Questa
         clear ; while /bin/true ; do echo -e -n '\E[45A' ; for i in `ls /sys/class/net/enp175s0/statistics/ | fgrep -v txxxx_` ; do echo $i `cat /sys/class/net/enp175s0/statistics/$i` ; done ; echo ; ifconfig enp175s0 ; sleep 1 ; done
 
 
+## `.hex` files
+
+* [Windows tool: Binex](http://www.nlsw.nl/software/Binex/index.html)
+* [Linux tool: SRecord](https://srecord.sourceforge.net/)
+* [Python tool: bincopy](https://pypi.org/project/bincopy/)
+
+### Examples
+
+Print a `.mif` file as a Hex dump:
+* `srec_cat starting_tx.mif -Memory_Initialization_File -Output - -HEX_Dump`
+
+Print a `.mif` file as an Intel `.hex` file:
+* `srec_cat starting_tx.mif -Memory_Initialization_File -Output - -Intel`
+
+Print a `.mif` file in a nice format:
+* `srec_cat starting_tx.mif -Memory_Initialization_File -Output - -Texas_Instruments_TeXT`
+
+Convert a `.mif` file to a `.hex` file to the screen:
+* `srec_cat starting_tx.mif -Memory_Initialization_File -Output - -Intel`
+
+Convert a `.mif` file to a `.hex` file to another file:
+* `srec_cat starting_tx.mif -Memory_Initialization_File -Output starting_tx.hex -Intel`
 
 # Example Ethernet Frame
 
