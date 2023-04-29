@@ -86,18 +86,20 @@ initial busy = '0;
 // 4. Clears busy and returns to wait/idle state.
 
 
-localparam S_IDLE = 0,
-           S_COPYING = 1;
-
-logic [2:0] state = S_IDLE;
+// Quartus Prime Design Recommendations for SystemVerilog State Machines
+// Section 1.6.4.2.2
+typedef enum int unsigned { S_IDLE = 0, S_COPYING = 1 } state_t;
+state_t state = S_IDLE;
 
 // Saved source/destination addresses
 logic [SRC_ADDR_SZ-1:0] s_src_addr; // Starting address of copy
 logic [DST_ADDR_SZ-1:0] s_dst_addr; // Destination address of copy
 logic [SRC_ADDR_SZ-1:0] s_src_len;  // Length of copy
 
-// We wait a few cycles for copying to begin before we start checking if copying is over
-localparam COPYING_DELAY_START = 3'd4;
+// We wait a few cycles for copying to begin before we start checking if copying is over.
+// It takes three cycles from when we activate to we start writing, when SRC_LATENCY is 2.
+// So add an extra cycle just for good measure.
+localparam COPYING_DELAY_START = 3'd2 + 3'(SRC_LATENCY);
 logic [2:0] copying_delay;
 
 // Has copying completed?

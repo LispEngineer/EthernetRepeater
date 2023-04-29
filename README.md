@@ -192,7 +192,7 @@ project does not compile.
 
 * Generic synchronizer module for all synchronizers:
   * Parameters: length, width
-  * Add SDC controls to ensure that everything in there is synchronized
+  * Add SDC configuration to ensure that everything in there is synchronized
 
 * Add synchronizers to all reset signals that are not synchronous with
   the main clock. Or maybe just to all reset signals, period?
@@ -310,7 +310,7 @@ project does not compile.
 
 ## Known Bugs
 
-* MemCopy:
+* [Fixed] MemCopy:
   * Copies `src_len` + 1 bytes
     * Off by one error in calculating the last byte
   * Copies wrong bytes
