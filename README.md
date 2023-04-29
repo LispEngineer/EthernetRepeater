@@ -188,20 +188,21 @@ project does not compile.
   * Copies a set amount of words from one RAM to another RAM with a few clocks latency
   * RAM word sizes must be the same, but address sizes can differ
 
+* Synchronizer module
+  * Variable depth & width
+  * Has synthesis attributes for Quartus/Intel to handle it properly
+
 * Miscellaneous
   * 7-segment driver
 
 
 ## Next Steps
 
-* Generic synchronizer module for all synchronizers:
-  * Parameters: length, width
-  * Add SDC configuration to ensure that everything in there is synchronized
-    (figure out [synthesis attributes/pragmas](https://www.intel.com/content/www/us/en/docs/programmable/683283/18-1/synthesis-attributes-in-verilog-2001.html)
-    to force detection of synchronizer chain)
-
 * Add synchronizers to all reset signals that are not synchronous with
   the main clock. Or maybe just to all reset signals, period?
+  * Consider moving to reset style at the end of `always_ff` blocks
+    [per this reference](https://blog.award-winning.me/2017/11/resetting-reset-handling.html)
+    which I found [from this reference](http://fpgacpu.ca/fpga/verilog.html#resets)
 
 * LCD Manager
   * Power-up sequence required
