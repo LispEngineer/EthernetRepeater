@@ -7,6 +7,7 @@ TODO: Future enhancement possibilities:
 1. Copy different widths for source and destination
 2. Copy from the beginning or the end, in case we want to use this
    for copying from/to the same memory.
+3. Don't read beyond where we strictly need to read.
 
 FIXME: Figure out how to use src_addr_t, dst_addr_t and data_t in the
 module's parameter list.
@@ -72,25 +73,24 @@ initial busy = '0;
 // Three blocks, a reader, a writer and a main state machine.
 //
 // Reader:
-// 1. Starts reading into ram_rd_data
-// 2. At the appropriate latency asserts a "write ready" flag
-// 3. Keeps reading sequentially until all read
-// 4. Deasserts write ready flag once all done
+// 1. Starts reading into ram_rd_data once main state machine leaves idle
+// 2. Has a read latency countdown so the writer can start using
+//    the read data once it hits zero
+// 3. Keeps reading sequentially until main state machine goes idle
+//    (it's mostly harmless to read past the end and not use it)
 //
 // Writer:
-// 1. Waits for write ready
-// 2. Writes each byte into the destination when write ready
-//    (the destination is already set to ram_rd_data permanently)
-// 3. Stops when write not ready
+// 1. Waits for read data to be ready
+// 2. Writes each byte into the proper destination address
+//    (the destination write data is permanently set to the ram_rd_data)
+// 3. Stops when we have written the requested number of words
+// 4. Sets a signal when we're done writing
 //
 // State machine:
 // 1. Waits until activate asserted, then asserts busy
-// 2. Sets a signal to tell reader/writer to initialize themselves?
-//    Or should it set them itself? That would need to have two drivers
-//    of a single net in different always_ff blocks, so... Will have to think
-//    about that.
-// 3. Waits until the writer is done writing.
-// 4. Clears busy and returns to wait/idle state.
+// 2. If the length is degenerate, does nothing but a single-cycle busy assertion
+// 3. Waits until the writer is done writing
+// 4. Then returns to wait/idle state (which deasserts busy)
 
 
 // Quartus Prime Design Recommendations for SystemVerilog State Machines
@@ -146,7 +146,6 @@ always_ff @(posedge clk) begin: main_state_machine
 
     S_COPYING: begin: s_copying
 
-
       if (copying_delay == 0) begin: check_done
         if (copying_done) begin: am_done
           busy <= '0;
@@ -155,7 +154,6 @@ always_ff @(posedge clk) begin: main_state_machine
       end: check_done else begin: continue_waiting
         copying_delay <= copying_delay - 1'd1;
       end: continue_waiting
-
 
     end: s_copying
     endcase // state
