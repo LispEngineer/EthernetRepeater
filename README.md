@@ -310,6 +310,14 @@ project does not compile.
 
 ## Known Bugs
 
+* MemCopy:
+  * Copies `src_len` + 1 bytes
+    * Off by one error in calculating the last byte
+  * Copies wrong bytes
+    * Probably because we assert our "start writing" a cycle too soon
+      (but that would account for only one wrong/early byte)
+    * We should `assign wr_data = rd_data`
+
 * Simulating the RAM-reading requires me to stop using `.mif` files and start
   using `.hex` files - so I need to convert my RAM initialization to `.hex`.
   * However, if you use a simple .mif file with just a single byte per line,

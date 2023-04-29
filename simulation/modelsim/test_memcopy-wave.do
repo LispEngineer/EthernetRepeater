@@ -4,34 +4,36 @@ add wave -noupdate /test_memcopy/clk
 add wave -noupdate /test_memcopy/reset
 add wave -noupdate -divider {Source RAM}
 add wave -noupdate /test_memcopy/src_rd_en
-add wave -noupdate /test_memcopy/src_rd_addr
-add wave -noupdate /test_memcopy/src_rd_data
+add wave -noupdate -radix unsigned /test_memcopy/src_rd_addr
+add wave -noupdate -radix unsigned /test_memcopy/src_rd_data
 add wave -noupdate -divider {Destination RAM}
 add wave -noupdate /test_memcopy/dst_wr_en
-add wave -noupdate /test_memcopy/dst_wr_addr
-add wave -noupdate /test_memcopy/dst_wr_data
+add wave -noupdate -radix unsigned /test_memcopy/dst_wr_addr
+add wave -noupdate -radix unsigned /test_memcopy/dst_wr_data
+add wave -noupdate {/test_memcopy/test_ram_dst_inst/altsyncram_component/m_default/altsyncram_inst/mem_data[10]}
+add wave -noupdate {/test_memcopy/test_ram_dst_inst/altsyncram_component/m_default/altsyncram_inst/mem_data[11]}
+add wave -noupdate {/test_memcopy/test_ram_dst_inst/altsyncram_component/m_default/altsyncram_inst/mem_data[12]}
 add wave -noupdate -divider {DUT Inputs}
 add wave -noupdate /test_memcopy/busy
 add wave -noupdate /test_memcopy/activate
-add wave -noupdate /test_memcopy/dst_addr
-add wave -noupdate /test_memcopy/src_addr
-add wave -noupdate /test_memcopy/src_len
+add wave -noupdate -radix unsigned /test_memcopy/dst_addr
+add wave -noupdate -radix unsigned /test_memcopy/src_addr
+add wave -noupdate -radix unsigned /test_memcopy/src_len
 add wave -noupdate -divider {DUT memcopy}
-add wave -noupdate /test_memcopy/dut/s_dst_addr
-add wave -noupdate /test_memcopy/dut/s_src_addr
-add wave -noupdate /test_memcopy/dut/s_src_len
+add wave -noupdate -radix unsigned /test_memcopy/dut/s_dst_addr
+add wave -noupdate -radix unsigned /test_memcopy/dut/s_src_addr
+add wave -noupdate -radix unsigned /test_memcopy/dut/s_src_len
 add wave -noupdate /test_memcopy/dut/state
 add wave -noupdate /test_memcopy/dut/copying_delay
 add wave -noupdate -divider {memcopy reader}
-add wave -noupdate /test_memcopy/dut/write_ready
 add wave -noupdate /test_memcopy/dut/reader_was_idle
 add wave -noupdate /test_memcopy/dut/read_delay
-add wave -noupdate /test_memcopy/dut/cur_src_addr
+add wave -noupdate -radix unsigned /test_memcopy/dut/cur_src_addr
 add wave -noupdate -divider {memcopy writer}
 add wave -noupdate /test_memcopy/dut/copying_done
 add wave -noupdate /test_memcopy/dut/writer_was_idle
-add wave -noupdate /test_memcopy/dut/cur_dst_addr
-add wave -noupdate /test_memcopy/dut/last_dst_addr
+add wave -noupdate -radix unsigned /test_memcopy/dut/cur_dst_addr
+add wave -noupdate -radix unsigned /test_memcopy/dut/last_dst_addr
 TreeUpdate [SetDefaultTree]
 quietly WaveActivateNextPane
 WaveRestoreCursors {{Cursor 1} {0 ps} 0}
@@ -50,4 +52,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {15117 ps} {375740 ps}
+WaveRestoreZoom {106247 ps} {369145 ps}

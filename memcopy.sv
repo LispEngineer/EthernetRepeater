@@ -51,6 +51,7 @@ module memcopy #(
 
 assign clk_ram_wr = clk;
 assign clk_ram_rd = clk;
+assign ram_wr_data = ram_rd_data;
 
 `ifdef IS_QUARTUS
 // QuestaSim complaints about these:
@@ -72,6 +73,7 @@ initial busy = '0;
 // Writer:
 // 1. Waits for write ready
 // 2. Writes each byte into the destination when write ready
+//    (the destination is already set to ram_rd_data permanently)
 // 3. Stops when write not ready
 //
 // State machine:
@@ -95,6 +97,7 @@ logic [DST_ADDR_SZ-1:0] s_dst_addr; // Destination address of copy
 logic [SRC_ADDR_SZ-1:0] s_src_len;  // Length of copy
 
 // We wait a few cycles for copying to begin before we start checking if copying is over
+localparam COPYING_DELAY_START = 3'd4;
 logic [2:0] copying_delay;
 
 // Has copying completed?
@@ -121,7 +124,7 @@ always_ff @(posedge clk) begin: main_state_machine
         s_dst_addr <= dst_addr;
         s_src_len <= src_len;
         state <= S_COPYING;
-        copying_delay <= '1;
+        copying_delay <= COPYING_DELAY_START;
       end: activation
     end: s_idle
 
@@ -149,19 +152,19 @@ end: main_state_machine
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 // Reader State Machine
 
-// This becomes true once our reading pipeline has data to write
-logic write_ready = '0;
+// Track when we first go non-idle
 logic reader_was_idle = '1;
 
 logic [DST_ADDR_SZ-1:0] cur_src_addr;  // Current source address of copy
-localparam READ_DELAY_SZ = $clog2(SRC_LATENCY);
-logic [READ_DELAY_SZ:0] read_delay;
+localparam READ_DELAY_SZ = $clog2(SRC_LATENCY + 1);
+logic [READ_DELAY_SZ-1:0] read_delay;
 
 always_ff @(posedge clk) begin: reader_state_machine
 
   if (reset) begin: reader_reset
     ram_rd_ena <= '0;
     reader_was_idle <= '1;
+    read_delay <= (READ_DELAY_SZ)'(SRC_LATENCY);
 
   end: reader_reset else begin: reader_state
 
@@ -184,9 +187,7 @@ always_ff @(posedge clk) begin: reader_state_machine
         cur_src_addr <= cur_src_addr + 1'd1;
       end: continue_reading
 
-      if (read_delay == 0) begin: write_is_ready
-        write_ready <= '1;
-      end: write_is_ready else begin: write_not_yet_ready
+      if (read_delay != 0) begin: write_not_yet_ready
         read_delay <= read_delay - 1'd1;
       end: write_not_yet_ready
 
@@ -223,7 +224,7 @@ always_ff @(posedge clk) begin: writer_state_machine
       if (writer_was_idle) begin: prepare_writing
         writer_was_idle <= '0;
         cur_dst_addr <= s_dst_addr;
-        last_dst_addr <= s_dst_addr + (DST_ADDR_SZ)'(s_src_len);
+        last_dst_addr <= s_dst_addr + (DST_ADDR_SZ)'(s_src_len) - 1'd1;
         // Figure out our write start and end addresses
       end: prepare_writing
 
@@ -232,10 +233,10 @@ always_ff @(posedge clk) begin: writer_state_machine
       if (copying_done) begin: stop_writing
         // In case the main state machine doesn't get us back to S_IDLE fast enough
         ram_wr_ena <= '0;
-      end: stop_writing else if (write_ready) begin: do_write
+      end: stop_writing else if (read_delay == 0) begin: do_write
         // We got the signal from reader that we can write the data
         ram_wr_ena <= '1;
-        ram_wr_data <= ram_rd_data;
+        // remember, ram_wr_data is assigned to ram_rd_data above
         ram_wr_addr <= cur_dst_addr;
         cur_dst_addr <= cur_dst_addr + 1'd1;
 
