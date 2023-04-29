@@ -121,12 +121,19 @@ always_ff @(posedge clk) begin: main_state_machine
     S_IDLE: begin: s_idle
       busy <= '0;
       if (activate) begin: activation
-        busy <= '1;
-        s_src_addr <= src_addr;
-        s_dst_addr <= dst_addr;
-        s_src_len <= src_len;
-        state <= S_COPYING;
-        copying_delay <= COPYING_DELAY_START;
+        if (src_len == 0) begin: degenerate_length
+          // We should flash the busy but actually do nothing, as a zero length
+          // will break the rest of our code.
+          busy <= '1;
+
+        end: degenerate_length else begin: reasonable_length
+          busy <= '1;
+          s_src_addr <= src_addr;
+          s_dst_addr <= dst_addr;
+          s_src_len <= src_len;
+          state <= S_COPYING;
+          copying_delay <= COPYING_DELAY_START;
+        end: reasonable_length
       end: activation
     end: s_idle
 
@@ -157,7 +164,7 @@ end: main_state_machine
 // Track when we first go non-idle
 logic reader_was_idle = '1;
 
-logic [DST_ADDR_SZ-1:0] cur_src_addr;  // Current source address of copy
+logic [SRC_ADDR_SZ-1:0] cur_src_addr;  // Current source address of copy
 localparam READ_DELAY_SZ = $clog2(SRC_LATENCY + 1);
 logic [READ_DELAY_SZ-1:0] read_delay;
 

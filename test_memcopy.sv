@@ -114,20 +114,70 @@ initial begin
   reset <= 1'b1; 
   #21; reset <= 1'b0;
 
+  // Simple copy of 10 words
   #79;
-
   src_addr <= 1;
   dst_addr <= 10;
   src_len <= 20;
-
   #(CLOCK_DUR);
   activate <= '1;
-
   #(CLOCK_DUR);
   activate <= '0;
 
-  // Stop the simulation at appropriate point
+  // Single word
   #((20 + 10) * CLOCK_DUR);
+  src_addr <= 40;
+  dst_addr <= 40;
+  src_len <= 1;
+  #(CLOCK_DUR);
+  activate <= '1;
+  #(CLOCK_DUR);
+  activate <= '0;
+
+  // Degenerate case - 0 words
+  #(10 * CLOCK_DUR);
+  src_addr <= 60;
+  dst_addr <= 60;
+  src_len <= 0;
+  #(CLOCK_DUR);
+  activate <= '1;
+  #(CLOCK_DUR);
+  activate <= '0;
+
+  // Longer example
+  #(10 * CLOCK_DUR);
+  src_addr <= 260;
+  dst_addr <= 400;
+  src_len <= 100;
+  activate <= '1;
+  #(CLOCK_DUR);
+  activate <= '0;
+
+  // Write wrap-around
+  // [Did not work correctly]: gets 8 194 {wrap} 193 192 191
+  // Expected: 8 13 18 23 28
+  // FIXED
+  #(110 * CLOCK_DUR);
+  src_addr <= 827; // 3 then by 5s
+  dst_addr <= 510;
+  src_len <= 5;
+  activate <= '1;
+  #(CLOCK_DUR);
+  activate <= '0;
+
+  // Read wrap-around
+  // [Did not work correctly]: gets 213 1 0 2 0 1 2 3 4 5 ...
+  // should be 213 (wrong) 206 199 192 (correct) 0 1 2 3
+  // FIXED
+  #(15 * CLOCK_DUR);
+  src_addr <= 1020; // 213 206 199 192 0 1 2 3 ...
+  dst_addr <= 100;
+  src_len <= 20;
+  activate <= '1;
+  #(CLOCK_DUR);
+  activate <= '0;
+
+  #(30 * CLOCK_DUR);
   $display("Ending simulation @ ", $time);
   $stop; // $stop = breakpoint
   // DO NOT USE $finish; it will exit Questa!!!

@@ -184,6 +184,9 @@ project does not compile.
   * Can put a character anywhere with single activation request
   * (Cannot initialize screen yet! Works only if screen initialized by previous programming.)
 
+* RAM copier - `memcopy`
+  * Copies a set amount of words from one RAM to another RAM with a few clocks latency
+
 * Miscellaneous
   * 7-segment driver
 
@@ -193,6 +196,8 @@ project does not compile.
 * Generic synchronizer module for all synchronizers:
   * Parameters: length, width
   * Add SDC configuration to ensure that everything in there is synchronized
+    (figure out [synthesis attributes/pragmas](https://www.intel.com/content/www/us/en/docs/programmable/683283/18-1/synthesis-attributes-in-verilog-2001.html)
+    to force detection of synchronizer chain)
 
 * Add synchronizers to all reset signals that are not synchronous with
   the main clock. Or maybe just to all reset signals, period?
@@ -310,20 +315,6 @@ project does not compile.
 
 ## Known Bugs
 
-* [Fixed] MemCopy:
-  * Copies `src_len` + 1 bytes
-    * Off by one error in calculating the last byte
-  * Copies wrong bytes
-    * Probably because we assert our "start writing" a cycle too soon
-      (but that would account for only one wrong/early byte)
-    * We should `assign wr_data = rd_data`
-
-* Simulating the RAM-reading requires me to stop using `.mif` files and start
-  using `.hex` files - so I need to convert my RAM initialization to `.hex`.
-  * However, if you use a simple .mif file with just a single byte per line,
-    this seems to work well enough - the first RAM byte may be different from `.mif`
-    file but you can see it in the Questa memory viewer.
-
 * Have an off by one error on receive packet length because it
   uses the final byte write position and not the actual length.
 
@@ -344,28 +335,19 @@ project does not compile.
 
 ### Recently Fixed Bugs
 
-* **Does NOT receive packets at 1000.** Gets the correct length (same off by one error as
-  above), but the data is all messed up. Expected then Received:
+* [Fixed] MemCopy:
+  * Copies `src_len` + 1 bytes
+    * Off by one error in calculating the last byte
+  * Copies wrong bytes
+    * Probably because we assert our "start writing" a cycle too soon
+      (but that would account for only one wrong/early byte)
+    * We should `assign wr_data = rd_data`
 
-        Hi Doug! !"#$%&'   48 69 20 44 6F 75 67 21 20 21 22 23 24 25 26 27
-        Bye    ()*+,-./0   42 79 65 20 20 20 20 28 29 2A 2B 2C 2D 2E 2F 30 .. 22 24 26 28 2A
-
-        I`$Oewa !"#$%&'"   xx 49 60 24 4F 65 77 61 20 21 22 23 24 25 26 27 .. 22
-        Iu`   ()*+,-./ 2   22 49 75 60 20 20 20 28 29 2A 2B 2C 2D 2E 2F 20 32
-
-        69 20 44 6F 75 67 21 20 21 22 23 24 25 26 27
-        49 60 24 4F 65 77 61 20 21 22 23 24 25 26 27
-        ... Shift the top nibble over one ...
-        69 20 44 6F 75 67 21 20 21 22 23 24 25
-
-  * If we do `always_ff @(posedge clk)` then the DDR receive negative side will be from the previous
-    byte, because the new corresponding `negedge` hasn't yet come in and gotten latched/flopped
-    into the input buffer.
-  * FIXED: Delay the `_h` side by a cycle to align it with the `_l` and these two things are fixed:
-    1. The data bytes for 1000 speed are properly aligned
-    2. The RX_CTL no longer shows unexpected frame extension
-  * REFIXED: Use "clock inversion" on the DDR clock and you get the `_h` and `_l` together without
-    latency. Not sure about timing implications.
+* Simulating the RAM-reading requires me to stop using `.mif` files and start
+  using `.hex` files - so I need to convert my RAM initialization to `.hex`.
+  * However, if you use a simple .mif file with just a single byte per line,
+    this seems to work well enough - the first RAM byte may be different from `.mif`
+    file but you can see it in the Questa memory viewer.
 
 ### Hardware Bugs
 
