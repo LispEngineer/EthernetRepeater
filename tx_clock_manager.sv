@@ -79,17 +79,11 @@ localparam initial_final_speed_10 = '0,
            initial_final_speed_1000 = '0,
            initial_final_link_up = '0;
 
-// Input synchronizers from RX
-logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_speed_10;
-logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_speed_100;
-logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_speed_1000;
-logic [SYNCHRONIZER_LENGTH - 1:0] sync_rx_link_up;
-
 // Final result of input synchronizers
-logic cur_rx_speed_10;
-logic cur_rx_speed_100;
-logic cur_rx_speed_1000;
-logic cur_rx_link_up;
+logic syncd_rx_speed_10;
+logic syncd_rx_speed_100;
+logic syncd_rx_speed_1000;
+logic syncd_rx_link_up;
 
 // Input stabilizers - we want all values to be the same for this many cycles
 logic [STABILIZATION_LENGTH - 1:0] stab_rx_speed_10;
@@ -129,19 +123,17 @@ assign tx_speed_1000 = current_clk_tx_1000;
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Synchronizers
-always_ff @(posedge clk) begin: synchronizers
-  // sync_rx_speed_10   <= {sync_rx_speed_10  [SYNCHRONIZER_LENGTH - 2:0], rx_speed_10};
-  sync_rx_speed_100  <= {sync_rx_speed_100 [SYNCHRONIZER_LENGTH - 2:0], rx_speed_100};
-  sync_rx_speed_1000 <= {sync_rx_speed_1000[SYNCHRONIZER_LENGTH - 2:0], rx_speed_1000};
-  sync_rx_link_up    <= {sync_rx_link_up   [SYNCHRONIZER_LENGTH - 2:0], rx_link_up};
+// We use multi-bit synchronizers because we also do the stabilization (debouncing)
+// stage next.
 
-  // cur_rx_speed_10   <= sync_rx_speed_10  [SYNCHRONIZER_LENGTH - 1];
-  cur_rx_speed_100  <= sync_rx_speed_100 [SYNCHRONIZER_LENGTH - 1];
-  cur_rx_speed_1000 <= sync_rx_speed_1000[SYNCHRONIZER_LENGTH - 1];
-  cur_rx_link_up    <= sync_rx_link_up   [SYNCHRONIZER_LENGTH - 1];
-
-  {cur_rx_speed_10, sync_rx_speed_10}   <= {sync_rx_speed_10, rx_speed_10};
-end: synchronizers
+synchronizer #(
+  .DEPTH(SYNCHRONIZER_LENGTH),
+  .WIDTH(4)
+) input_synchronizer (
+  .clk,
+  .incoming({      rx_speed_10,       rx_speed_100,       rx_speed_1000,       rx_link_up}),
+  .syncd   ({syncd_rx_speed_10, syncd_rx_speed_100, syncd_rx_speed_1000, syncd_rx_link_up})
+);
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Stabilizers
@@ -166,10 +158,10 @@ always_comb begin: stabilizer_comb
 end: stabilizer_comb
 
 always_ff @(posedge clk) begin: stabilizers
-  stab_rx_speed_10   <= {stab_rx_speed_10  [STABILIZATION_LENGTH - 2:0], cur_rx_speed_10};
-  stab_rx_speed_100  <= {stab_rx_speed_100 [STABILIZATION_LENGTH - 2:0], cur_rx_speed_100};
-  stab_rx_speed_1000 <= {stab_rx_speed_1000[STABILIZATION_LENGTH - 2:0], cur_rx_speed_1000};
-  stab_rx_link_up    <= {stab_rx_link_up   [STABILIZATION_LENGTH - 2:0], cur_rx_link_up};
+  stab_rx_speed_10   <= {stab_rx_speed_10  [STABILIZATION_LENGTH - 2:0], syncd_rx_speed_10};
+  stab_rx_speed_100  <= {stab_rx_speed_100 [STABILIZATION_LENGTH - 2:0], syncd_rx_speed_100};
+  stab_rx_speed_1000 <= {stab_rx_speed_1000[STABILIZATION_LENGTH - 2:0], syncd_rx_speed_1000};
+  stab_rx_link_up    <= {stab_rx_link_up   [STABILIZATION_LENGTH - 2:0], syncd_rx_link_up};
 
   // Save the final decision on what our speed is
   final_rx_speed_10   <= entirely_valid ? stab_rx_speed_10[0]   : final_rx_speed_10;

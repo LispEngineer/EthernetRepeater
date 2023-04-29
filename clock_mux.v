@@ -36,7 +36,7 @@ module clock_mux (clk, clk_select, clk_out);
 	generate
 		for (i=0; i<num_clocks; i=i+1) begin: lp0
 			wire [num_clocks-1:0] tmp_mask;
-			assign tmp_mask = {num_clocks{1'b1}} ^ (1 << i);
+			assign tmp_mask = {num_clocks{1'b1}} ^ ({{(num_clocks-1){1'b0}}, 1'b1} << i);
 
 			assign qualified_sel[i] = clk_select[i] & (~|(ena_r2 & tmp_mask));
 

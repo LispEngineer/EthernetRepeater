@@ -573,6 +573,9 @@ assign ENET1_TX_ER = '0; // Not used in RGMII
 assign ENET1_GTX_CLK = gtx_clk;
 assign LEDG[7] = clock_eth_tx_lock; // pll_locked;
 
+// If you mess up the transmit clock multiplexer or selector, then this error:
+// Critical Warning (15090): Changed operation mode of PLL (this one) to No Compensation
+// could pop up, giving you a clue that it's broken. :)
 pll_50_to_all_eth_single_input	pll_50_to_all_eth_single_input_inst (
 	.inclk0 ( CLOCK_50 ),
 	.c0 ( clk_eth_125 ), // 125 MHz
