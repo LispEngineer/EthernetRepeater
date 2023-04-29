@@ -7,6 +7,9 @@ TODO: Future enhancement possibilities:
 1. Copy different widths for source and destination
 2. Copy from the beginning or the end, in case we want to use this
    for copying from/to the same memory.
+
+FIXME: Figure out how to use src_addr_t, dst_addr_t and data_t in the
+module's parameter list.
 */
 
 `ifdef IS_QUARTUS // Defined in Assignments -> Settings -> ... -> Verilog HDL input
@@ -48,6 +51,10 @@ module memcopy #(
   output logic [DST_ADDR_SZ-1:0] ram_wr_addr,
   output logic   [MEM_WIDTH-1:0] ram_wr_data
 );
+
+typedef logic [SRC_ADDR_SZ-1:0] src_addr_t;
+typedef logic [DST_ADDR_SZ-1:0] dst_addr_t;
+typedef logic   [MEM_WIDTH-1:0] data_t;
 
 assign clk_ram_wr = clk;
 assign clk_ram_rd = clk;
@@ -92,9 +99,9 @@ typedef enum int unsigned { S_IDLE = 0, S_COPYING = 1 } state_t;
 state_t state = S_IDLE;
 
 // Saved source/destination addresses
-logic [SRC_ADDR_SZ-1:0] s_src_addr; // Starting address of copy
-logic [DST_ADDR_SZ-1:0] s_dst_addr; // Destination address of copy
-logic [SRC_ADDR_SZ-1:0] s_src_len;  // Length of copy
+src_addr_t s_src_addr; // Starting address of copy
+dst_addr_t s_dst_addr; // Destination address of copy
+src_addr_t s_src_len;  // Length of copy
 
 // We wait a few cycles for copying to begin before we start checking if copying is over.
 // It takes three cycles from when we activate to we start writing, when SRC_LATENCY is 2.
@@ -164,7 +171,7 @@ end: main_state_machine
 // Track when we first go non-idle
 logic reader_was_idle = '1;
 
-logic [SRC_ADDR_SZ-1:0] cur_src_addr;  // Current source address of copy
+src_addr_t cur_src_addr;  // Current source address of copy
 localparam READ_DELAY_SZ = $clog2(SRC_LATENCY + 1);
 logic [READ_DELAY_SZ-1:0] read_delay;
 
@@ -211,8 +218,8 @@ end: reader_state_machine
 
 logic writer_was_idle = '1;
 
-logic [DST_ADDR_SZ-1:0] cur_dst_addr;  // Current destination address of copy
-logic [DST_ADDR_SZ-1:0] last_dst_addr; // Last destination address we will write
+dst_addr_t cur_dst_addr;  // Current destination address of copy
+dst_addr_t last_dst_addr; // Last destination address we will write
 
 always_ff @(posedge clk) begin: writer_state_machine
 

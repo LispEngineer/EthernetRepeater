@@ -1338,7 +1338,6 @@ set_global_assignment -name HEX_FILE EthernetRepeater.hex
 set_global_assignment -name HEX_FILE test_mem_src_starting.hex
 set_global_assignment -name QIP_FILE test_ram_src.qip
 set_global_assignment -name QIP_FILE test_ram_dst.qip
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name EDA_TEST_BENCH_NAME memcopy -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id memcopy
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME test_memcopy -section_id memcopy
@@ -1361,3 +1360,4 @@ set_global_assignment -name EDA_TEST_BENCH_FILE memcopy.sv -section_id memcopy -
 set_global_assignment -name EDA_TEST_BENCH_FILE test_memcopy.sv -section_id memcopy -hdl_version SystemVerilog_2005
 set_global_assignment -name EDA_TEST_BENCH_FILE test_ram_dst.v -section_id memcopy
 set_global_assignment -name EDA_TEST_BENCH_FILE test_ram_src.v -section_id memcopy
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

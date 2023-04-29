@@ -186,6 +186,7 @@ project does not compile.
 
 * RAM copier - `memcopy`
   * Copies a set amount of words from one RAM to another RAM with a few clocks latency
+  * RAM word sizes must be the same, but address sizes can differ
 
 * Miscellaneous
   * 7-segment driver
