@@ -128,8 +128,17 @@ added by HSMC card. Some useful features:
 
 # Current Functionality
 
-**IMPORTANT**! The rgmii_tx/_top modules are currently being coded and the whole
-project does not compile.
+* Reflects received packets back exactly (with newly calculated CRC)
+  * Observations with Ubuntu-sent generated packets:
+  * Long packets (at least 64 bytes) are reflected exactly
+  * Shorter packets sent by operating system (Ubuntu 22 LTS) are received by the
+    FPGA as length 64, padded by zeros, and resent as that length.
+  * Easily handles 700 long packets a second
+    * `ping -f -c 100 -s 10000 -I enp175s0 -r 192.168.10.134` - fragments into
+      6 maxmimum length packets (1518) plus one 1166
+    * Handles 15000 for 1100 packets a second
+  * Cannot handle even on packet at 20000
+  * Handles 16,000 but not 17,000
 
 * Ethernet MII Management Interface (MDC/MDIO)
   * Simulation tested in Questa
@@ -155,7 +164,6 @@ project does not compile.
 * RGMII Receive Capability
   * FIFO for putting notifications of fully received packets into
   * RAM buffer for putting full packet data into (excluding preamble/SFD, including FCS/CRC - not checked!)
-  * (Disabled) "Bogus" test implementation of receiver to exercise RAM, FIFO
   * In-Band metadata connected
     * Tested at 10/100 Full/Half and 1000 Full
       * (PHY will not autonegotiate a 1000 Half link with default settings)
@@ -176,8 +184,8 @@ project does not compile.
         may be lost."
         * Actually, it handles missing preamble bytes; it expects the SFD to come in
           byte-aligned.
-    * BUG: Reports length off by one
-  * Displays the first 32 bytes of payload as ASCII characters on the LCD
+  * **Disabled** "Bogus" test impementation of receiver to exercise RAM, FIFO
+  * **DISABLED** Displays the first 32 bytes of payload as ASCII characters on the LCD
     (after the Ethernet header: 2 MACs and an EtherType)
 
 * Built-in LCD driver
@@ -197,6 +205,16 @@ project does not compile.
 
 
 ## Next Steps
+
+* Make the RAM copier run at a higher speed than bytes can be received
+  so we can empty our buffers faster than we can receive them and keep
+  up with line speed
+  * Something at or over 125 MHz would work
+  * Or run at 50 MHz and copy 3+ bytes at a time
+
+* Receive a packet, retransmit it- but also do something with it locally
+  like display it to the LCD or a VGA output
+  * Copy it to another buffer concurrently with the first buffer?
 
 * Add synchronizers to all reset signals that are not synchronous with
   the main clock. Or maybe just to all reset signals, period?
@@ -438,6 +456,7 @@ and made it into SystemVerilog. Source is [on Github](https://github.com/mbuesch
   * `ip link set _device_ promisc on` - turn on promiscuous mode
   * `ip -s link` to see summary statistics
   * `ip -stats link show enp175s0` shows them for that specific device
+  * `ip link set enp175s0 mtu 1600` increase the MTU for this link (1500 is default)
 
 * `ifconfig`
   * `ifconfig _device_ promisc` - turn on promiscuous mode
@@ -459,9 +478,20 @@ and made it into SystemVerilog. Source is [on Github](https://github.com/mbuesch
 * `ping`
   * Send exactly one ping on a specified interface to broadcast address
     * `ping -c 1 -I enp175s0 -r -b 192.168.3.255`
+  * Send the longest possible non-fragmented packet
+    * `ping -c 1 -s 1472 -I enp175s0 -r 192.168.10.134`
+    * Will be 1514 data bytes plus the 4 byte FCS/CRC
+    * (1500 data bytes + 2x6 MAC address + 2 byte ethertype/length + 4 byte FCS = max frame size 1518)
+      * ((Don't forget the 8 byte preamble and n-byte interpacket delay))
+    * Set a larger MTU using `ip` above and you can go longer
 
 * `packeth`
   * GUI (and CLI?) program to send random Ethernet packets, very useful
+
+* `packit`
+  * [GitHub](https://github.com/resurrecting-open-source-projects/packit)
+
+* [Packet Sender](https://packetsender.com/)
 
 * `scapy`
   * [Docs](https://scapy.readthedocs.io/en/latest/introduction.html)
