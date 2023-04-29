@@ -376,6 +376,7 @@ always_comb begin
   ddr_data = speed_1000;
 end // Decode rx_ctl
 
+
 always_ff @(posedge clk_rx) begin
 
   if (reset) begin
@@ -647,7 +648,7 @@ always_ff @(posedge clk_rx) begin
           1'b0, // CRC error
           packet_rcv_err, // Frame error
           cur_buf,
-          byte_pos
+          byte_pos // FIXME: Reduce this by 4 so we don't report the FCS/CRC? Only if CRC checks out?
         };
       end else if (local_count == '0) begin
         // We give up

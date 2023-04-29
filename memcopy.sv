@@ -53,6 +53,8 @@ module memcopy #(
   output logic   [MEM_WIDTH-1:0] ram_wr_data
 );
 
+// FIXME: Should we synchronize the "activate" signal?
+
 typedef logic [SRC_ADDR_SZ-1:0] src_addr_t;
 typedef logic [DST_ADDR_SZ-1:0] dst_addr_t;
 typedef logic   [MEM_WIDTH-1:0] data_t;

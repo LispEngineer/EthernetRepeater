@@ -604,19 +604,18 @@ ddr_output_1 ddr_output1_rgmii1_tx_ctl (
 //        and provides a low logic level when depressed."
 logic [3:0] last_key_tx = '1;
 logic last_send_busy = '0;
-logic send_buf = '0; // Which buffer are we sending? (We just using 2 for now)
 
 // TX RAM
 logic        tx_ram_wr_ena;
 logic [13:0] tx_ram_wr_addr;
 logic  [7:0] tx_ram_wr_data;
-assign tx_ram_wr_ena = '0; // We never write
 
 // TX FIFO
 logic        tx_fifo_wr_full;
 logic        tx_fifo_wr_req = '0;
 logic [13:0] tx_fifo_wr_data;
 
+`ifdef TRANSMIT_ON_KEY_2
 always_ff @(posedge CLOCK_50) begin: request_packet_send
   last_key_tx <= KEY;
   last_send_busy <= send_busy;
@@ -644,13 +643,14 @@ always_ff @(posedge CLOCK_50) begin: request_packet_send
     // (remember key down reports logic 0)
     if (!tx_fifo_wr_full) begin: push_into_tx_fifo
       tx_fifo_wr_req <= '1;
-      tx_fifo_wr_data <= {2'b00, send_buf, 11'd60}; // Buffer (3 bits) length (11 bits)
-      send_buf <= ~send_buf; // Next time send the other buffer
+      tx_fifo_wr_data <= {send_buf, 11'd60}; // Buffer (3 bits) length (11 bits)
+      send_buf[0] <= ~send_buf[0]; // Next time send the other buffer
     end: push_into_tx_fifo
 
   end
 
 end: request_packet_send
+`endif // TRANSMIT_ON_KEY_2
 
 
 // ETHERNET RECEIVER TOP LEVEL ////////////////////////////////////////////////
@@ -695,10 +695,13 @@ logic [3:0] fifo_latency_count;
 logic ram_rd_ena;
 logic [13:0] ram_rd_addr;
 logic [7:0] ram_rd_data; // READ ONLY
+
+`ifdef WRITE_PACKETS_TO_LCD
 // Break out the RAM address into a buffer # and byte position
 logic [2:0] ram_read_buf;
 logic [10:0] ram_read_pos; // 2k max packet size - 11 bits
 assign ram_rd_addr = {ram_read_buf, ram_read_pos};
+`endif // WRITE_PACKETS_TO_LCD
 
 // We will skip reading the preamble, SFD, and Ethernet header.
 // NOTE: Revised operation does not save preamble/SFD in RAM.
@@ -737,7 +740,7 @@ assign LEDG[5:0] = {in_band_differ, speed_1000, speed_100, speed_10, full_duplex
 // assign hex_display [15:8] = count_interframe[7:0]; // count_reception[7:0];
 // assign hex_display  [7:0] = count_interframe_differ[7:0];
 // assign hex_display  [7:0] = {in_band_h, in_band_l};
-assign hex_display[23:16] = count_rcv_end_carrier[7:0]; // Getting a lot of these
+// assign hex_display[23:16] = count_rcv_end_carrier[7:0]; // Getting a lot of these
 // assign hex_display [15:8] = count_rcv_errors[7:0]; // And none of these
 // assign hex_display  [7:0] = count_rcv_end_normal[7:0]; // And none of these
 assign hex_display[15:0] = stored_fifo_data;
@@ -799,6 +802,12 @@ ddr_input_5_inverted	ddr_input_5_inverted_inst (
 
 /////////////////////////////////////////////////////////////
 // Ethernet RGMII PHY Interface - RX, TX, MII
+
+// Transmit FIFO
+logic [2:0] tx_fifo_buf_num;
+logic [10:0] tx_fifo_len;
+// Break out the tx_fifo_wr_data
+assign tx_fifo_wr_data = {tx_fifo_buf_num, tx_fifo_len};
 
 ethernet_trx_88e1111 #(
   // Leave most parameters at default
@@ -969,17 +978,61 @@ generate
 endgenerate
 
 
-// State machine for reading FIFO and going to display memory
-localparam S_ERX_AWAIT_FIFO = 0,
-           S_ERX_GET_FIFO = 1,
-           S_ERX_START_READING = 2,
-           S_ERX_READ_BYTE = 3,
-           S_ERX_READ_LATENCY = 4,
-           S_ERX_SAVE_BYTE = 5,
-           S_ERX_WRITE_SCREEN = 6,
-           S_ERX_AWAIT_SCREEN = 7;
+// Memory Copier signals
+logic rxtx_copy_busy;
+logic rxtx_copy_activate = '0;
+logic [13:0] rxtx_copy_src_addr;
+logic [13:0] rxtx_copy_dst_addr;
+logic [13:0] rxtx_copy_len;
 
-logic [2:0] erx_state = S_ERX_AWAIT_FIFO;
+// Memory copier instance from receive buffer to transmit buffer
+memcopy /* #(
+  parameter MEM_WIDTH = 8,
+  parameter SRC_ADDR_SZ = 14,
+  parameter DST_ADDR_SZ = 14,
+  parameter SRC_LATENCY = 2
+) */ receive_to_transmit_copier (
+  .clk(CLOCK_50),
+  .reset(~KEY[3]),
+
+  .busy(rxtx_copy_busy),
+
+  .activate(rxtx_copy_activate),
+  .src_addr(rxtx_copy_src_addr),
+  .dst_addr(rxtx_copy_dst_addr),
+  .src_len(rxtx_copy_len),
+
+  // Source RAM reader interface
+  .clk_ram_rd(), // Already connected to CLOCK_50 elsewhere
+  .ram_rd_ena(ram_rd_ena), // Eth RX RAM
+  .ram_rd_addr(ram_rd_addr),
+  .ram_rd_data(ram_rd_data),
+
+  // Destination RAM writer interface
+  .clk_ram_wr(), // Already connected to CLOCK_50 elsewhere
+  .ram_wr_ena(tx_ram_wr_ena),
+  .ram_wr_addr(tx_ram_wr_addr),
+  .ram_wr_data(tx_ram_wr_data)
+);
+
+
+
+
+// State machine for reading FIFO and going to display memory
+typedef enum int unsigned { 
+  S_ERX_AWAIT_FIFO = 0,
+  S_ERX_GET_FIFO = 1,
+  S_ERX_START_READING = 2,
+  S_ERX_READ_BYTE = 3,
+  S_ERX_READ_LATENCY = 4,
+  S_ERX_SAVE_BYTE = 5,
+  S_ERX_WRITE_SCREEN = 6,
+  S_ERX_AWAIT_SCREEN = 7,
+  S_ERX_START_RAM_COPY = 8,
+  S_ERX_AWAIT_RAM_COPY = 9,
+  S_ERX_QUEUE_SEND = 10
+} erx_state_t;
+erx_state_t erx_state = S_ERX_AWAIT_FIFO;
 
 logic [7:0] packets_received = '0;
 
@@ -992,7 +1045,15 @@ assign hex_display[23:16] = byte_to_display;
 assign hex_display[15:8] = fifo_buf_num;
 */
 
-always_ff @(posedge CLOCK_50) begin
+logic [2:0] send_buf = '0;
+logic copy_was_busy;
+
+assign hex_display[23:16] = send_buf;
+
+
+`ifdef WRITE_PACKETS_TO_LCD
+
+always_ff @(posedge CLOCK_50) begin: lcd_writer_state_machine
   
   if (!lcd_available) begin
 
@@ -1026,7 +1087,7 @@ always_ff @(posedge CLOCK_50) begin
       end
     end
 
-    S_ERX_START_READING: begin
+    S_ERX_START_READING: begin /////////////////////////////////////////
       // Prepare the RAM reading, and then start the read next cycle
       ram_read_pos <= RAM_READ_START; // Skip reading header stuff, direct to Eth payload
 
@@ -1134,7 +1195,119 @@ always_ff @(posedge CLOCK_50) begin
 
   end
 
-end
+end: lcd_writer_state_machine
+
+
+`else // copy packets, don't write to LCD //////////////////////////////////////////////////////////////////////
+
+
+
+always_ff @(posedge CLOCK_50) begin: retransmit_received_packets
+  
+  if (!lcd_available) begin
+
+    // FIXME: CODE A RESET
+
+  end else begin
+
+    case (erx_state)
+
+    S_ERX_AWAIT_FIFO: begin //////////////////////////////////////////
+
+      tx_fifo_wr_req <= '0;
+
+      // Wait for the fifo to be non-empty
+      if (!fifo_rd_empty) begin
+        fifo_rd_req <= '1;
+        erx_state <= S_ERX_GET_FIFO;
+        // Takes a while to read the data from FIFO - some latency
+        fifo_latency_count <= FIFO_LATENCY - 1'd1;
+
+        packets_received <= packets_received + 1'd1;
+      end
+  
+    end
+
+    S_ERX_GET_FIFO: begin //////////////////////////////////////////
+      // Save the data from the FIFO once our read latency is over
+      fifo_rd_req <= '0;
+      if (fifo_latency_count == 0) begin
+        stored_fifo_data <= fifo_rd_data;
+        erx_state <= S_ERX_START_RAM_COPY;
+      end else begin
+        fifo_latency_count <= fifo_latency_count - 1'd1;
+      end
+    end
+
+    S_ERX_START_RAM_COPY: begin: start_ram_copy ////////////////////////////////////////
+      // We need to copy our packet from the receive buffer to the transmit buffer.
+      // If we used a different speed clock for our memory copier, we would need to:
+      // 1. Set our input address and make sure they are stable for enough cycles
+      // 2. Set our activate signal
+      // 3. Wait for the busy signal to become active
+      // 4. Wait for the busy signal to become inactive
+      // But since we're running the RAM copier synchronous to this always_ff, we can
+      // be a bit more cavalier
+      rxtx_copy_src_addr <= { fifo_buf_num, 11'b0 };
+      rxtx_copy_dst_addr <= { send_buf, 11'b0 };
+      // The received length includes the CRC currently
+      // FIXME: Verify the CRC in the receiver and don't store it in the RAM buffer?
+      rxtx_copy_len <= fifo_pkt_len - 4; // Don't copy the FCS/CRC
+
+      // Prepare our FIFO assertion too
+      tx_fifo_buf_num <= send_buf;
+      tx_fifo_len <= fifo_pkt_len - 4; // Don't send the FCS/CRC
+
+      if (!rxtx_copy_busy) begin
+        rxtx_copy_activate <= '1;
+        erx_state <= S_ERX_AWAIT_RAM_COPY;
+        copy_was_busy <= '0;
+        send_buf <= send_buf + 1'd1; // Use the next send buffer, next time
+      end
+      // FIXME: give up if it's permanently busy?
+    end: start_ram_copy
+
+    S_ERX_AWAIT_RAM_COPY: begin: await_ram_copy ////////////////////////////////////////
+      // Wait for the busy flag to be asserted then de-asserted
+      case ({copy_was_busy, rxtx_copy_busy})
+      // FIXME: Maybe have a counter so it cannot loop infinitely in these two states?
+      2'b00: begin /* wasn't busy, still not busy: do nothing */ end
+      2'b11: begin /* was busy, still busy: do nothing */ end
+      2'b01: begin
+        // Wasn't busy, became busy
+        copy_was_busy <= '1;
+      end
+      2'b10: begin
+        // Was busy, now not busy - copy is done!
+        erx_state <= S_ERX_QUEUE_SEND;
+      end
+      endcase
+    end: await_ram_copy
+
+    S_ERX_QUEUE_SEND: begin: queue_send ////////////////////////////////////////////////
+      // Assert our transmit FIFO send request when the send buffer is not full
+      if (tx_fifo_wr_full) begin
+        // DO NOTHING
+        // FIXME: Time out after a while and give up so we don't loop indefinitely
+      end else begin
+        tx_fifo_wr_req <= '1;
+        // tx_fifo_buf_num and tx_fifo_len already set above
+        erx_state <= S_ERX_AWAIT_FIFO;
+      end
+    end: queue_send
+
+    default: erx_state <= S_ERX_AWAIT_FIFO;
+    endcase
+
+  end
+
+end: retransmit_received_packets
+
+`endif // WRITE_PACKETS_TO_LCD
+
+
+
+
 
 
 // LED BLINKER TOP LEVEL //////////////////////////////////////////////////////
