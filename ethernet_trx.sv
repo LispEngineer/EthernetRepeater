@@ -276,7 +276,6 @@ eth_phy_88e1111_controller #(
 rgmii_rx ethernet_rx (
   .clk_rx(clk_rx), // Use CLOCK_50 if using BOGUS Ethernet Receiver
   .reset (reset), // FIXME: Implement reset sequencer
-  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing) - UNUSED
 
   // Inputs from PHY (after DDR conversion)
   .rx_ctl_h (rx_ctl_h), // RX_DV

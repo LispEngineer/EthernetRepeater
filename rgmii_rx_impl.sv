@@ -41,11 +41,6 @@ module rgmii_rx_impl #(
   input  logic clk_rx,
   input  logic reset,
 
-  // Should we receive data in DDR?
-  // This is only used for 1000
-  // FIXME: Do not use this, see the in-band signalling
-  input  logic ddr_rx, // SYNCHRONIZED (but should be very slow changing)
-
   // RGMII PHY INTERFACE ///////////////////////
 
   // Marvell 88E1111 Data Sheet, Section 2.2.3
@@ -120,20 +115,6 @@ module rgmii_rx_impl #(
 // How many packets did we drop because we
 // could not put them into the FIFO due to wr_full?
 logic [31:0] dropped_packets = '0;
-
-/////////////////////////////////////////////////////////////////
-// Input synchronizer
-
-// Synchronizer for inputs
-localparam SYNC_LEN = 2;
-logic [(SYNC_LEN - 1):0] syncd_ddr_rx;
-logic real_ddr_rx;
-// Registered real_ddr_rx when we become activated
-logic txn_ddr;
-
-always_ff @(posedge clk_rx) begin
-  syncd_ddr_rx <= {syncd_ddr_rx[(SYNC_LEN - 2):0], ddr_rx};
-end // synchronizer
 
 
 

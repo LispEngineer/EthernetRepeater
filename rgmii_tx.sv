@@ -90,11 +90,16 @@ logic [10:0] count;
 localparam BYTES_PREAMBLE = 8'b1010_1010;
 localparam BYTES_SFD      = 8'b1010_1011;
 
-localparam SYNC_LEN = 2;
-logic [(SYNC_LEN - 1):0] syncd_ddr_tx;
-logic real_ddr_tx;
-// Registered real_ddr_tx when we become activated by an un-empty FIFO
+logic syncd_ddr_tx;
+// Registered syncd_ddr_tx when we become activated by an un-empty FIFO
 logic txn_ddr;
+
+synchronizer ddr_sync (
+  .clk(clk_tx),
+  .incoming(ddr_tx),
+  .syncd(syncd_ddr_tx)
+);
+
 
 // Our actual low-level logic registered signals for transmit enable & error
 logic tx_en;
@@ -127,7 +132,6 @@ always_comb begin
   gclk_tx = clk_tx;
   tx_ctl_h = tx_en;
   tx_ctl_l = tx_en ^ tx_err;
-  real_ddr_tx = syncd_ddr_tx[SYNC_LEN - 1];
 
   tx_data_h = d_h;
   tx_data_l = d_l;
@@ -135,11 +139,6 @@ always_comb begin
   // Debugging outputs
   crc_out = crc;
 end
-
-// Synchronizer
-always_ff @(posedge clk_tx) begin
-  syncd_ddr_tx <= {syncd_ddr_tx  [(SYNC_LEN - 2):0], ddr_tx};
-end // synchronizer
 
 // Data saved from the most recent FIFO read
 logic [FIFO_WIDTH-1:0] saved_fifo;
@@ -319,7 +318,7 @@ always_ff @(posedge clk_tx) begin
         // So, let's do this right when we become idle.
         if (!fifo_rd_empty) begin
           // We need to send a packet
-          txn_ddr <= real_ddr_tx;
+          txn_ddr <= syncd_ddr_tx;
           busy <= '1;
           state <= S_PREAMBLE;
           nibble <= NIBBLE_LOW;

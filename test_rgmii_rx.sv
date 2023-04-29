@@ -65,7 +65,6 @@ assign ram_rd_addr = {read_buf, read_pos};
 rgmii_rx dut (
   .clk_rx(clk),
   .reset(reset),
-  .ddr_rx('0), // SYNCHRONIZED (but should be very slow changing)
 
   // Inputs from PHY (after DDR conversion)
   .rx_ctl_h('0), // RX_DV

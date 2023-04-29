@@ -30,10 +30,6 @@ module rgmii_rx #(
   input  logic clk_rx,
   input  logic reset,
 
-  // Should we receive data in DDR?
-  // This is only used for 1000
-  input  logic ddr_rx, // SYNCHRONIZED (but should be very slow changing)
-
   // RGMII PHY INTERFACE ///////////////////////
 
   // Marvell 88E1111 Data Sheet, Section 2.2.3
@@ -165,7 +161,6 @@ rgmii_rx_impl #(
 ) rgmii_rx_impl_inst (
   .clk_rx(clk_rx),
   .reset(reset),
-  .ddr_rx(ddr_rx),
 
   // Status & Debugging outputs
   .link_up(link_up),
